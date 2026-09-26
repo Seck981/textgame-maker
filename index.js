@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.4', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.5', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
   /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步

@@ -1632,8 +1632,10 @@ function ensureAudio() {
     _bgmEl.style.display = 'none'; _seEl.style.display = 'none';
     (document.body || document.documentElement).appendChild(_bgmEl);
     (document.body || document.documentElement).appendChild(_seEl);
-    /* 浏览器要求"先有用户操作"才允许出声: 第一次点击/触摸时把该放的补上 */
-    const resume = () => { _needGesture = false; if (_bgmEl && _bgmEl.src) _bgmEl.play().catch(function () {}); };
+    /* 浏览器要求"先有用户操作"才允许出声: 第一次点击/触摸时把该放的补上。
+       ★ 但用户是【手动暂停】的话绝不续播 —— 以前这里不看 _bgmUserPaused, 于是点酒馆任何一个地方
+         (切页面、点列表) 都会把暂停的音乐重新 play() 起来 (用户: 我暂停了它自己又响, 很烦)。 */
+    const resume = () => { _needGesture = false; if (_bgmUserPaused) return; if (_bgmEl && _bgmEl.src) _bgmEl.play().catch(function () {}); };
     document.addEventListener('click', resume, true);
     document.addEventListener('touchstart', resume, true);
   } catch (e) {}
