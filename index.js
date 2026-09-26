@@ -6,10 +6,10 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.13', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.14', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
-      /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
+        /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
   /* ==GV-RICH-START== 悬浮窗富渲染: 本段必须保持自包含 —— tpl-build/sync-rich.mjs
        会把整段抄进插件(index.js)给预览用, 两边共用一套切分/围栏代码 */
     var FENCE3 = String.fromCharCode(96, 96, 96);
@@ -116,6 +116,50 @@
       "    if (!window.toastr) { try { window.toastr = FAKE.toastr; } catch (e) {} }",
       "  } catch (e) { console.warn('gv fake parent', e); }",
       "  }",
+      "  /* ★ 兜底: 别人写的选项卡片脚本(预设正则里那段)在悬浮窗沙箱里可能压根不执行(或执行前就被掐),",
+      "     表现就是: 卡片画得出来、但里面空空如也, 点它也不展开, 看着像「点了没反应」。",
+      "     引擎这边补一套最小实现 —— 只在【选项容器还是空的】时候才动手, 绝不会覆盖正常工作的卡片脚本。 */",
+      "  function __gvFallbackCard() {",
+      "    try {",
+      "      var card = document.getElementById('post-it-card');",
+      "      var raw = document.getElementById('raw-options-data');",
+      "      var box = document.getElementById('options-container');",
+      "      var cc = document.getElementById('collapsible-content');",
+      "      if (!card || !raw || !box) return;",
+      "      if (card.__gvFbDone) return;",
+      "      if (box.children.length) { card.__gvFbDone = 'skip'; return; }   // 卡片脚本正常跑过了, 不插手",
+      "      var items = String(raw.textContent || '').split(String.fromCharCode(10))",
+      "        .map(function (s) { return String(s).trim().replace(/^[A-Za-z][.、] */, ''); })",
+      "        .filter(function (s) { return s && s.indexOf('bubble:') < 0 && s.indexOf('气泡:') < 0 && s.indexOf('|') < 0; });",
+      "      if (!items.length) return;",
+      "      items.forEach(function (t) {",
+      "        var d = document.createElement('div');",
+      "        d.className = 'clickable-text';",
+      "        d.setAttribute('data-action', t);",
+      "        d.innerHTML = '<li>' + String(t).replace(/[&<>]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]; }) + '</li>';",
+      "        box.appendChild(d);",
+      "      });",
+      "      card.__gvFbDone = 'render';",
+      "      try { console.info('[gv] 卡片脚本没跑起来 —— 引擎兜底渲染了 ' + items.length + ' 个选项'); } catch (e) {}",
+      "      card.addEventListener('click', function (ev) {",
+      "        try {",
+      "          var t = ev.target;",
+      "          var opt = (t && t.closest) ? t.closest('.clickable-text') : null;",
+      "          if (opt) {",
+      "            ev.stopPropagation();                       // 别让卡片脚本再插一遍(它要是也在跑的话)",
+      "            var a = String(opt.getAttribute('data-action') || '');",
+      "            __gvCall('setInput', a);",
+      "            try { console.info('[gv] 选项 -> 输入框: ' + a.slice(0, 30)); } catch (e2) {}",
+      "            return;",
+      "          }",
+      "          if (cc) cc.classList.toggle('open');",
+      "        } catch (e3) { console.warn('[gv] 兜底点击出错', e3); }",
+      "      }, true);",
+      "    } catch (e) { console.warn('[gv] 兜底卡片出错', e); }",
+      "  }",
+      "  setTimeout(__gvFallbackCard, 1000);",
+      "  setTimeout(__gvFallbackCard, 2200);",
+      "  setTimeout(__gvFallbackCard, 4000);",
       "})();"
     ].join("\n");
 
@@ -181,6 +225,7 @@
       container.innerHTML = richHtml(text, messageId);
     }
     /* ==GV-RICH-END== */
+  /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
