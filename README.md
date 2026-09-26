@@ -30,7 +30,7 @@
 酒馆 → **扩展（Extensions）** → **安装扩展（Install extension）** → 把本仓库地址粘进去 → 安装：
 
 ```
-https://github.com/<你的用户名>/textgame-maker
+https://github.com/Seck981/textgame-maker
 ```
 
 装好后刷新页面，顶部工具栏最右边会多出一个**场记板图标**（和酒馆其它图标同一排、同一种颜色，会跟着你的主题/美化走）。
