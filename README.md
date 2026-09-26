@@ -47,6 +47,10 @@ https://github.com/Seck981/textgame-maker
 酒馆 → 扩展 → 找到本扩展 → 点它右边的 **更新 / Update**（老版本没有这个按钮就删掉重装，重装不会动你的方案数据）。
 更新完 **刷新页面**（F5）。插件里的方案、素材、提示词都存在酒馆的扩展设置里，更新不会丢。
 
+**更新时顺手把 `engine/` 再复制一次**：引擎放在 `public/galgame/` 里，扩展更新**不会**动它，而预览和导出读的就是那一份。
+旧引擎导出来的脚本，别人装上去悬浮窗会退回旧样子。所以更新完，照着下面第 2 步再放一次引擎文件（或者跑 `tools/install-engine.mjs`）。
+「导出」页会自己检查：引擎是旧版时，页面上会直接给你一条红字提示。
+
 ### 2) 放引擎文件（**必做**，否则预览和导出会读不到引擎）
 
 插件在**预览**和**导出**时，会去酒馆的 `public/galgame/` 目录读引擎文件。所以把仓库里 `engine/` 的内容复制到：
@@ -135,6 +139,7 @@ textgame-maker/
 │  ├─ bake-prompts.mjs    把指导提示词烘焙进插件
 │  ├─ mk-page-prompts.mjs 生成三份指导提示词（含默认模板全文）
 │  ├─ tpl-css.mjs         从引擎 CSS 同步样式到模板
+│  ├─ sync-rich.mjs       把引擎里的富渲染段同步进插件预览（改了那段就重跑）
 │  └─ pngcard.mjs         读写角色卡 PNG（chara / ccv3 两份元数据）
 ├─ tools/                 维护脚本（可选）
 │  ├─ install-engine.mjs  把 engine/ 复制到 <酒馆>/public/galgame/
@@ -197,4 +202,8 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 
 ---
 
-© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.0**
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.1**
+
+**v1.0.1 改了什么**：修好悬浮窗里 ```html 围栏不渲染的老问题 —— 以前围栏里的卡片会把三个反引号原样显示出来、
+卡片里的脚本也不执行（所以那些该点开的摘要卡点不动）。现在围栏里的内容跑在它自己的小页面里，和酒馆楼层的表现一致；
+插件预览的悬浮楼层也换成同一套渲染。**这次更新记得重放一次 engine/**（见上面「更新」）。

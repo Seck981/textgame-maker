@@ -4,6 +4,22 @@ function $(id){ return document.getElementById(id); }
 function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 var root = $('panel'), body = $('body'), count = $('count');
 
+/* ---- 富渲染出来的活 iframe: 高度由它里面那段 prelude 用 postMessage 报过来 ----
+   沙箱里读不到 iframe 的 contentDocument, 所以只能让它自己报 (真机/预览同一套) */
+window.addEventListener('message', function(ev){
+  var d = ev.data; if (!d || d.__gvFit !== 1) return;
+  var h = Math.max(0, Math.round(Number(d.h) || 0));
+  var list = body.querySelectorAll('iframe.gv-rich-iframe');
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].contentWindow !== ev.source) continue;
+    list[i].style.height = (h > 24 ? h + 10 : 0) + 'px';
+    list[i].style.display = h > 24 ? 'block' : 'none';
+    var holder = list[i].parentElement;
+    if (holder && holder.classList && holder.classList.contains('gv-rich')) holder.style.display = h > 24 ? '' : 'none';
+    try { if (typeof sbBody === 'function') { sbBody(); sbSyncs.forEach(function(s){ s(); }); } } catch (e) {}
+  }
+});
+
 /* ---- 自绘滚动条 (和卡里一个样式): 原生那条 Chrome 画得丑 ---- */
 var sbSyncs = [];
 function attachScrollbar(scroller, host){

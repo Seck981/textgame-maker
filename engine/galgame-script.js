@@ -1184,7 +1184,10 @@ function panelEntries() {
         }
       } catch (e) {}
     }
+    /* ★ 富渲染: 围栏交给引擎切分 —— html 围栏变成活 iframe (和酒馆助手那套一样), 其它围栏变代码块。
+       以前这里直接 innerHTML: 三个反引号原样露在面板里, 围栏里的脚本也不执行 (摘要卡点不动就是这个)。 */
     let html = text;
+    try { if (P.Galgame && P.Galgame.richHtml) html = P.Galgame.richHtml(text, id); } catch (e) {}
     if (reasoning && String(reasoning).trim()) {
       html = '<details class="gv-think"><summary>思维链（酒馆推理格式化）</summary><div class="gv-think-body">'
         + String(reasoning).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '</div></details>' + html;

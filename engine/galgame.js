@@ -7,6 +7,8 @@
   if (window.Galgame && window.Galgame.version >= 1) return;
 
   const BASE = '/galgame/';
+  /* ★ 引擎文件版本标记 —— 插件导出前会查这个字符串: 酒馆里的 /galgame/galgame.js 是【扩展更新时不会自动替换】的, 没有这个标记 = 用户的引擎还是旧的, 导出的脚本悬浮窗会退回旧样子 (index.js 导出页会当面警告) */
+  const ENGINE_REV = '2026-09-26-rich1';
 
   const CONFIG = {
     /* 背景: AI 写的关键词 -> 图片。用 includes 匹配, 顺序有意义。
@@ -1450,6 +1452,8 @@ function mountTemplate(container, kind, payload, opts) {
      - 普通文本 -> markdown 渲染
      - 围栏里含 html> / <head> / <body  -> 活 iframe (酒馆助手那套)
      - 其它围栏 -> pre/code */
+  /* ==GV-RICH-START== 悬浮窗富渲染: 本段必须保持自包含 —— tpl-build/sync-rich.mjs
+     会把整段抄进插件(index.js)给预览用, 两边共用一套切分/围栏代码 */
   var FENCE3 = String.fromCharCode(96, 96, 96);
   var THIRD_PARTY2 =
     '<link rel="stylesheet" href="https://testingcf.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" />' +
@@ -1485,7 +1489,7 @@ function mountTemplate(container, kind, payload, opts) {
     "      return Object.assign({}, g(), { getContext: g });",
     "    }});",
     "  } catch (e) { console.warn(\"gv prelude\", e); }",
-    "  function fit(){ try { var h = document.body.scrollHeight; if (h > 20 && window.frameElement) window.frameElement.style.height = (h + 10) + \"px\"; } catch(e){} }",
+    "  function fit(){ try { var h = document.body.scrollHeight; if (h > 20 && window.frameElement) window.frameElement.style.height = (h + 10) + \"px\"; try { parent.postMessage({ __gvFit: 1, h: h }, \"*\"); } catch(e2){} } catch(e){} }",
     "  window.addEventListener(\"load\", function(){ fit(); setTimeout(fit, 250); setTimeout(fit, 900); });",
     "  try { new ResizeObserver(function(){ setTimeout(fit, 50); }).observe(document.documentElement); } catch(e){}",
     "  try { new MutationObserver(function(){ setTimeout(fit, 60); }).observe(document.documentElement, { subtree: true, childList: true, attributes: true }); } catch(e){}",
@@ -1500,19 +1504,18 @@ function mountTemplate(container, kind, payload, opts) {
   }
 
   var __gvSeq2 = 0;
-  function makeIframeEl(code, messageId) {
-    var id = "TH-message--" + (messageId == null ? "0" : messageId) + "--gv" + (__gvSeq2++);
-    var f = document.createElement("iframe");
-    f.className = "gv-rich-iframe";
-    f.id = id;
-    f.setAttribute("frameborder", "0");
-    f.setAttribute("scrolling", "no");
-    f.style.cssText = "width:100%;border:0;display:block;min-height:24px;height:60px;";
-    f.srcdoc = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n'
+  function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
+  function richFrameDoc(code) {
+    return '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="utf-8">\n'
       + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
       + '<style>*,*::before,*::after{box-sizing:border-box;}html,body{margin:0!important;padding:0;max-width:100%!important;}</style>\n'
       + THIRD_PARTY2 + '\n<script>' + PRELUDE2 + '<\/script>\n</head>\n<body>\n' + code + '\n</body>\n</html>';
-    return f;
+  }
+  /* 活 iframe 的 HTML 串 (和酒馆助手那套一致: TH-render 外壳 + TH-message-- 前缀的 id) */
+  function richFrameHtml(code, messageId) {
+    var id = 'TH-message--' + (messageId == null ? '0' : messageId) + '--gv' + (__gvSeq2++);
+    return '<div class="TH-render gv-rich"><iframe class="gv-rich-iframe" id="' + id + '" frameborder="0" scrolling="no"'
+      + ' style="width:100%;border:0;display:block;min-height:24px;height:60px;" srcdoc="' + escAttr(richFrameDoc(code)) + '"></iframe></div>';
   }
 
   var __md2 = null;
@@ -1528,64 +1531,33 @@ function mountTemplate(container, kind, payload, opts) {
     return "<p>" + escHtml(t).replace(/\n/g, "<br>") + "</p>";
   }
 
-  /* 富渲染: 把所有 ``` 围栏都换成占位符, 整段丢给渲染器, 之后再还原成真实元素
-     —— 渲染器完全看不到围栏, 所以 <details> 之类的结构不会被截断, 和原正则的表现一致 */
-  function renderRichInto(container, text, messageId) {
-    var src = String(text == null ? "" : text);
+  /* 富渲染: 把所有围栏换成占位符 -> 整段走 markdown -> 再把占位符换回(活 iframe / 代码块)
+     ★ 这里是字符串版: 悬浮窗模板跑在沙箱 iframe 里, 宿主没法把 DOM 塞进去, 只能把 HTML 串递过去。
+     html 语言的围栏 = 活 iframe (和酒馆助手的表现一致), 其它语言 = pre/code */
+  function richHtml(text, messageId) {
+    var src = String(text == null ? '' : text);
     var holders = [];
-    var re = new RegExp(FENCE3 + "([a-zA-Z0-9_-]*)[ \\t]*\\r?\\n?([\\s\\S]*?)" + FENCE3, "g");
+    var re = new RegExp(FENCE3 + '([a-zA-Z0-9_-]*)[ \\t]*\\r?\\n?([\\s\\S]*?)' + FENCE3, 'g');
     var pre = src.replace(re, function (m, lang, code) {
-      var token = "@@GVRICH" + holders.length + "@@";
-      holders.push({ front: isFrontend(code), lang: lang || "", code: code });
-      return "\n" + token + "\n";
+      var token = '@@GVRICH' + holders.length + '@@';
+      var l = String(lang || '').toLowerCase();
+      holders.push({ front: l === 'html' || l === 'htm' || isFrontend(code), lang: lang || '', code: code });
+      return '\n' + token + '\n';
     });
-    container.innerHTML = mdToHtml2(pre);
-    if (!holders.length) return;
-    function build(h) {
-      if (h.front) {
-        var box = document.createElement("div");
-        box.className = "TH-render gv-rich";
-        box.appendChild(makeIframeEl(h.code, messageId));
-        return box;
-      }
-      var p = document.createElement("pre");
-      var c = document.createElement("code");
-      if (h.lang) c.className = "language-" + h.lang;
-      c.textContent = h.code;
-      p.appendChild(c);
-      return p;
-    }
-    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-    var nodes = [];
-    while (walker.nextNode()) {
-      var n = walker.currentNode;
-      if (n.nodeValue && n.nodeValue.indexOf("@@GVRICH") >= 0) nodes.push(n);
-    }
-    nodes.forEach(function (node) {
-      var parts = node.nodeValue.split(/(@@GVRICH\d+@@)/);
-      var frag = document.createDocumentFragment();
-      var solo = null, extra = 0;
-      parts.forEach(function (p) {
-        var mm = /^@@GVRICH(\d+)@@$/.exec(p);
-        if (mm) {
-          var built = build(holders[Number(mm[1])]);
-          frag.appendChild(built);
-          solo = built;
-        } else {
-          if (p.trim()) extra++;
-          if (p) frag.appendChild(document.createTextNode(p));
-        }
-      });
-      var parent = node.parentNode;
-      if (!parent) return;
-      /* 整段只有这一个占位符 -> 连同外层 <p> 一起换掉, 避免出现 <p><div></div></p> */
-      if (extra === 0 && solo && parent.tagName === "P" && parent.childNodes.length === 1 && parent.parentNode) {
-        parent.parentNode.replaceChild(solo, parent);
-      } else {
-        parent.replaceChild(frag, node);
-      }
+    var html = mdToHtml2(pre);
+    if (!holders.length) return html;
+    html = html.replace(/<p>\s*(@@GVRICH\d+@@)\s*<\/p>/g, '$1');
+    holders.forEach(function (h, i) {
+      var out = h.front ? richFrameHtml(h.code, messageId)
+        : '<pre class="gv-rich-pre"><code' + (h.lang ? ' class="language-' + h.lang + '"' : '') + '>' + escHtml(h.code) + '</code></pre>';
+      html = html.split('@@GVRICH' + i + '@@').join(out);
     });
+    return html;
   }
+  function renderRichInto(container, text, messageId) {
+    container.innerHTML = richHtml(text, messageId);
+  }
+  /* ==GV-RICH-END== */
   /* 从父页面量 iframe 高度 (不依赖 iframe 内部的脚本) */
   function fitIframes(container) {
     var list = container.querySelectorAll('iframe.gv-rich-iframe');
@@ -1774,7 +1746,7 @@ function injectBubbleCss(css) {
     refreshUserAvatars: refreshUserAvatars,
     liveUserAvatar: liveUserAvatar,
     resolveBg: resolveBg, resolveFace: resolveFace,
-    loadConvertCfg, saveConvertCfg, convertApiOf, convertEnabled, createConvertDialog, createPromptDialog, create, createPanel, renderRichInto, fitIframes, resolveBg, resolveFace,
+    loadConvertCfg, saveConvertCfg, convertApiOf, convertEnabled, createConvertDialog, createPromptDialog, create, createPanel, renderRichInto, richHtml, fitIframes, resolveBg, resolveFace,
     /* 直接渲染一段脚本文本到指定容器, 便于独立测试 */
 
     renderTo(container, text, opts) {
