@@ -1122,6 +1122,11 @@ function ensurePanel() {
     ctl = P.Galgame.mountTemplate(m, 'panel', panelInit(), {
       minH: 90,
       canvas: true,      // ★ 整窗口画布 + clip-path 抠出面板 (活动范围 = 整个窗口)
+      /* ★ 悬浮层【直挂】进酒馆页面(引擎的 mountTemplateInline + shadow DOM 隔离样式):
+         这样它里面那些活 iframe 的 window.parent 就是【酒馆页面本身】——
+         卡片脚本里 window.parent.document.querySelector('#send_textarea') / window.parent.triggerSlash 直接可用,
+         和旧版"引擎自带面板"完全一致, 不再依赖假 parent + postMessage 转发。 */
+      inlineHost: true,
       /* ★ 悬浮窗模板发过来的动作 (以前一个都没接: 「导入素材包」点了等于没点) */
       onAction(action, arg) {
         /* ★ 悬浮窗模板实际会发的动作: 一条条都得接住 (以前只接了 packFile, 其余全静默丢弃) */

@@ -1199,10 +1199,65 @@ function gvInlineExternalCss(html) {
   });
   return chain.then(function () { return out; });
 }
+  /* ★ 把模板直接挂进宿主文档 (放 shadow DOM 里隔离样式) —— 悬浮层专用。
+     悬浮层是【宿主 UI】, 不是 AI 产出的楼层内容。挂成沙盒 iframe 的话, 它里面那些活 iframe 的 window.parent
+     就变成这个沙箱了: 卡片脚本里的 window.parent.document.querySelector('#send_textarea') / window.parent.triggerSlash
+     全都拿不到, 只能靠假 parent + postMessage 转发, 任何一环不对就『点了没反应』。
+     直接挂进酒馆页面之后, 活 iframe 的 window.parent 就是酒馆页面本身 —— 和旧版引擎自带面板完全一致。 */
+  function mountTemplateInline(container, t, payload, opts) {
+    var old = container.querySelector('.gv-tpl-inline');
+    if (old) old.remove();
+    var host = document.createElement('div');
+    host.className = 'gv-tpl-inline';
+    host.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;';
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    var style = document.createElement('style');
+    style.textContent = String(t.css || '');
+    root.appendChild(style);
+    var body = document.createElement('div');
+    body.className = 'gv-tpl-body';
+    body.innerHTML = String(t.html || '');
+    root.appendChild(body);
+    container.appendChild(host);
+    var docProxy = {
+      getElementById: function (id) { return root.getElementById ? root.getElementById(id) : root.querySelector('#' + id); },
+      querySelector: function (s) { return root.querySelector(s); },
+      querySelectorAll: function (s) { return root.querySelectorAll(s); },
+      getElementsByClassName: function (c) { return root.querySelectorAll('.' + c); },
+      addEventListener: function () { return root.addEventListener.apply(root, arguments); },
+      removeEventListener: function () { return root.removeEventListener.apply(root, arguments); },
+      createElement: function () { return document.createElement.apply(document, arguments); },
+      createTextNode: function () { return document.createTextNode.apply(document, arguments); },
+      body: body, documentElement: document.documentElement, head: document.head, title: document.title,
+    };
+    var handlers = {};
+    var last = payload;
+    var ctx = {
+      _h: handlers,
+      on: function (type, fn) { (handlers[type] = handlers[type] || []).push(fn); },
+      _post: function (type, arg) {
+        if (type === 'wantSize' || type === 'resize' || type === 'move') return;   // 直挂模式下面板自己定位, 不需要外框
+        try { if (opts.onAction) opts.onAction(type, arg); } catch (e) {}
+      },
+      send: function (type, arg) { (handlers[type] || []).forEach(function (f) { try { f(arg); } catch (e) {} }); },
+    };
+    try { (new Function('ctx', 'document', 'window', String(t.js || '')))(ctx, docProxy, window); }
+    catch (e) { try { console.warn('[gv] 悬浮层模板出错', e); } catch (x) {} }
+    setTimeout(function () { ctx.send('init', last); }, 60);
+    return {
+      el: body,
+      send: function (type, arg) { if (type === 'init') last = arg; ctx.send(type, arg); },
+      show: function () {}, hide: function () {}, collapse: function () {},
+      destroy: function () { try { host.remove(); } catch (e) {} },
+      inlineHost: true,
+    };
+  }
 function mountTemplate(container, kind, payload, opts) {
     var t = (CONFIG.templates || {})[kind];
     if (!t) return null;
     opts = opts || {};
+    /* ★ 悬浮层走"直挂"这条路(见 mountTemplateInline): 活 iframe 的上级才是酒馆页面本身 */
+    if (opts.inlineHost) return mountTemplateInline(container, t, payload, opts);
     var old = container.querySelector('.gv-tpl-frame');
     if (old) old.remove();
     var f = document.createElement('iframe');
@@ -1536,6 +1591,15 @@ function mountTemplate(container, kind, payload, opts) {
     "        try { w.postMessage(msg, '*'); } catch (e2) {}",
     "      }",
     "    } catch (e3) {}",
+    "    /* ★ 万一界面是被 window.open 开的(外置手机 / 独立窗口那种): 往上发都不经过酒馆页面,",
+    "       那就顺手发给 opener —— 酒馆主页面就在那儿。没有 opener 时这几行什么都不做。 */",
+    "    try {",
+    "      var op = window.opener;",
+    "      for (var k = 0; k < 3 && op; k++) {",
+    "        try { op.postMessage(msg, '*'); } catch (e4) {}",
+    "        try { op = op.opener; } catch (e5) { break; }",
+    "      }",
+    "    } catch (e6) {}",
     "  }",
     "  function __gvEl() {",
     "    var el = { textContent: '', innerText: '', innerHTML: '', style: {}, dataset: {}, checked: false, disabled: false,",
