@@ -6,10 +6,10 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.21', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.22', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
-                      /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
+                        /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
   /* ==GV-RICH-START== 悬浮窗富渲染: 本段必须保持自包含 —— tpl-build/sync-rich.mjs
        会把整段抄进插件(index.js)给预览用, 两边共用一套切分/围栏代码 */
     var FENCE3 = String.fromCharCode(96, 96, 96);
@@ -204,6 +204,7 @@
       container.innerHTML = richHtml(text, messageId);
     }
     /* ==GV-RICH-END== */
+  /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
@@ -426,6 +427,30 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
       return t.replace(/\s+$/, '') + '\n' + L.join('\n') + '\n';
     } catch (e) { return text; }
   }
+  /* ★ 核心要求那两句: 老的「- 每次 4~8 行」改成「- 一个角色说话时他说的话为4~8行」,
+     并且一定要有一句「- 鼓励多用特殊演出」。老方案里存着旧文案(text 有值 buildPrompt 就整段用它),
+     所以导出前 / 悬浮窗那份也统一过一遍, 保证外面看到的、导出的都是新说法 (幂等, 已经对了就不动)。 */
+  function ensureCorePromptLines(text) {
+    try {
+      let t = String(text || '');
+      const NEWLINE = '- 一个角色说话时他说的话为4~8行';
+      const ENCOURAGE = '- 鼓励多用特殊演出';
+      if (t.indexOf('一个角色说话时他说的话为4~8行') < 0) {
+        if (t.indexOf('- 每次 4~8 行') >= 0) t = t.split('- 每次 4~8 行').join(NEWLINE);
+        else t = t.replace(/- 每次\s*4\s*[~～\-–—]\s*8\s*行/g, NEWLINE);
+      }
+      if (t.indexOf('鼓励多用特殊演出') < 0) {
+        const i = t.indexOf(NEWLINE);
+        if (i >= 0) {
+          const nl = t.indexOf('\n', i);
+          t = nl >= 0 ? (t.slice(0, nl) + '\n' + ENCOURAGE + t.slice(nl)) : (t.replace(/\s+$/, '') + '\n' + ENCOURAGE + '\n');
+        } else {
+          t = t.replace(/\s+$/, '') + '\n' + ENCOURAGE + '\n';
+        }
+      }
+      return t;
+    } catch (e) { return text; }
+  }
   function buildPrompt(p) {
     if (p.prompt && p.prompt.trim()) return p.prompt;
     const a = assetLists(p);
@@ -464,7 +489,8 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
     L.push('- 没有立绘的角色（路人 / 只露一次脸的店小二之类）：名字照写、表情那一格【留空】，例： 店小二||客官里边请。| —— 引擎不会给他配立绘，和旁白一个待遇（只有上面立绘表里的角色才写表情名）');
     L.push('- 根据剧情自由调用素材：场景换了才换背景，角色情绪变了才换表情，不要每行都换');
     L.push('- 只能从上面列出的名字里选，不要自己新造素材名');
-    L.push('- 每次 4~8 行');
+    L.push('- 一个角色说话时他说的话为4~8行');
+    L.push('- 鼓励多用特殊演出');
     L.push('- {{user}} 说话时，角色名写 {{user}}');
     if (slots.length) L.push('- 站位字段只能写：' + slots.join('、') + '（角色站在画面的哪个位置）');
     if (slots.length) L.push('- 站位跟着角色走：同一个角色在同一段剧情里尽量一直用同一个站位');
@@ -1989,7 +2015,7 @@ let _pvWinOpen = false;
       order: vChat.order.slice(),
       showUA: vChat.showUA,
       /* 悬浮窗那三个页面要用的数据: 全在插件这边, 不依赖脚本 */
-      prompt: (function(){ try { return buildPrompt(cur); } catch (e) { return ''; } })(),
+      prompt: (function(){ try { return ensureCorePromptLines(buildPrompt(cur)); } catch (e) { return ''; } })(),
       convertCfg: (function(){ try { return JSON.parse(localStorage.getItem('gv_convert_api_v1') || '{}'); } catch (e) { return {}; } })(),
     };
   }
@@ -4060,7 +4086,7 @@ const stripAudio = (t) => {
     const noAudio = (p.audioMode === 'without');
     const pView = noAudio ? Object.assign({}, p, { audioList: [], seList: [], assets: Object.assign({}, p.assets || {}, { audio: [], se: [] }) }) : p;
     /* ★ 自定义提示词里没有 BGM/音效那几行时, 导出时补上 (关键词表里有名字才补) */
-    const promptText = ensureAudioPromptLines(buildPrompt(pView), pView.assets);
+    const promptText = ensureAudioPromptLines(ensureCorePromptLines(buildPrompt(pView)), pView.assets);
     const allCss = css + '\n' + panelCss;
     const report = [];
     /* ★ 旧引擎导出的脚本, 悬浮窗还是旧样子 (别人下载到坏脚本的根源) -> 明确报出来 */
