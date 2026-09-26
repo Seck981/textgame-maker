@@ -364,6 +364,10 @@
       }
 
       const parts = line.split(/\s*[|｜]\s*|\t+/);
+      /* ★ 行尾那个 | 是【终止符】不是空字段 —— 不削掉的话 "名|表情|台词|效果|" 会算成 5 段:
+         效果被并进台词(真机: |bubble:sparkle| 原样出现在正文里), 而 fx 取到的是末尾那个空串 -> 气泡永远不弹。
+         (旁白||文字| 削掉尾巴后剩 3 段, 正好走"第 3 段空着"的那条老路, 不受影响) */
+      if (parts.length > 1 && !String(parts[parts.length - 1]).trim()) parts.pop();
       if (parts.length > 5) { rest.push(rawLine.x); continue; }   // 表格行字段太多
       if (parts.length >= 3 && inScope(lineStart)) {
         /* 站位字段可选: 名|表情|台词|效果|left —— 只有最后一段命中站位关键词时才吃掉它 */
