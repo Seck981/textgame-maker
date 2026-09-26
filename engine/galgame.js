@@ -1472,9 +1472,14 @@ function mountTemplate(container, kind, payload, opts) {
 
   var PRELUDE2 = [
     "(function(){",
-    "  /* ★ 悬浮窗那种嵌套沙箱里 window.parent 是跨源的: 先探一次, 整段 prelude 都靠这个开关决定吵不吵 */",
+    "  /* ★ 先探一次上级: 只有上级就是酒馆页面本身(楼里正常的活 iframe)才什么都不做。",
+    "     悬浮窗里那个 iframe 的上级是面板模板 —— 它可能跨源(读不到 document), 也可能同源但根本没有 #send_textarea,",
+    "     两种情况都必须装假 parent, 否则卡片点选项时 t/o 都是空, 会静默什么都不发生(2026-09-26 真机就是这个)。 */",
     "  var __gvNeedShim = false;",
-    "  try { __gvNeedShim = (window.parent !== window) && !window.parent.document; } catch (e) { __gvNeedShim = true; }",
+    "  try {",
+    "    var __gvPD = (window.parent !== window) ? window.parent.document : null;",
+    "    __gvNeedShim = (window.parent !== window) && !(__gvPD && __gvPD.querySelector && __gvPD.querySelector('#send_textarea'));",
+    "  } catch (e) { __gvNeedShim = (window.parent !== window); }",
     "  try { window._ = window.parent._; } catch (e) {}",
     "  try {",
     "    var id = (window.frameElement && window.frameElement.id) || window.name;",
