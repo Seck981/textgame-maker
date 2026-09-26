@@ -26,11 +26,10 @@ const common = [
 '  （"其余同上""省略""按上面自己补"都不行 —— 三块都得给全，一次给完）。',
 '  每块开头可以写一行注释说明这块干什么，但块与块之间不要夹大段解释文字。',
 '  三部分各自的体积参考：CSS 不超过 25KB、JS 不超过 30KB。',
-  '     （var / function）就行。',
+  '  js 那块是当普通脚本直接跑的（不是 ES 模块）：不要写 import / export，用 var / function 就行。',
   '',
-  '沙箱里能用什么 / 不能用什么（宿主已经把一些库搬进沙箱了，直接用就行）',
-  '  能用：',
-  '  能用（宿主已经把下面这些搬进沙箱了（预览和真机都一样），直接用，不用自己引）：',
+  '这一层里能用什么 / 不能用什么',
+  '  能用（下面这些宿主已经搬进来了（预览和真机都一样），直接用，不用自己引）：',
   '    · Font Awesome 全套图标 —— <i class="fa-solid fa-heart"></i> / <i class="fa-regular fa-star"></i> / <i class="fa-brands fa-github"></i>',
   '    · Tailwind CSS —— 直接写 class（flex / p-4 / text-xl / grid …）',
   '    · highlight.js —— <pre><code class="language-js">…</code></pre>，代码高亮（配色已带）',
@@ -81,9 +80,9 @@ const head = [
 '    还要能拖动、改大小、收小球。',
 ].join('\n');
 
-function build(no, title, what, cssReq, jsReq, msgTable, files) {
-
-  const L = [SEP, no + '、' + title + '（提示词）', SEP, '', ask, '', '这一层是什么 / 要做什么 / HTML 结构要求', what, '', common, '',
+function build(no, title, what, cssReq, jsReq, msgTable, files, commonTxt) {
+  /* ★ commonTxt: 悬浮楼层是直挂进酒馆页面的, 环境跟"沙箱那两层"不一样, 单独一份 (v1.0.19) */
+  const L = [SEP, no + '、' + title + '（提示词）', SEP, '', ask, '', '这一层是什么 / 要做什么 / HTML 结构要求', what, '', commonTxt || common, '',
     'CSS 部分的要求', cssReq, '', 'JS 部分的要求', jsReq, '', '消息协议（宿主认这些类型名，不能自己发明）', msgTable, '',
     '输出：按上面「输出格式」写，给这一层的 html / css / js 各一段围栏。', '',
     '参考：这一层当前默认模板全文（照它写最稳）', F + 'html', rd(files[0]), F, F + 'css', rd(files[1]), F, F + 'js', rd(files[2]), F];
@@ -116,6 +115,10 @@ const charP = build('一', '仿文字游戏的 CHAR 楼层',
   '    · 所有层（#bgA #bgB / #stage / #box / #sticker）都必须【在手机框里面】用 position: absolute 定位',
   '      （相对 .gv-phone），不要贴到 body / iframe 上。',
   '    · 对话框那一块（.gv-ui > .gv-box）贴在手机框底部：left:0; right:0; bottom:0，别让它溢出手机框。',
+  '    · 进度点 / 自动 / 重播那一排（#dots 和 #auto #replay 所在的 .gv-hud）【必须绝对定位钉在手机框右下角】：',
+  '      行数一多进度点就变多，这一排如果在普通流里，会把「自动 / 重播」顶出手机框（实测 40 句顶出 42px、60 句顶出 222px，',
+  '      按钮直接看不见）。点点放不下就让它自己变窄 / 被裁（flex: 0 1 auto; min-width: 0; overflow: hidden），按钮 flex: 0 0 auto 不跟着动；',
+  '      对话框（.gv-box）留出 margin-bottom 给它，别压在一起。',
   '    · 参考模板里这几条必须保留（颜色圆角随便改，定位别改）：',
   '      .gv-bgs { position:absolute; inset:0; }   .gv-ui { position:absolute; left:0; right:0; bottom:0; }',
   '      .gv-stage { position:absolute; inset:0; }   .gv-phone { aspect-ratio: 9 / 19.5; }（默认竖版，你想换比例就改这一行）',
@@ -177,6 +180,7 @@ const charP = build('一', '仿文字游戏的 CHAR 楼层',
   '交卷前自检（这几条不过就别交）：',
   '  1) 比例是你在 CSS 里定的（默认竖版 9/19.5；换横版/方形就改 .gv-phone 的 aspect-ratio），宽度是 width:100%，没写死 px；',
   '  2) 对话框贴在手机框最底部、没有超出手机框；背景 / 立绘 / 贴纸全在手机框内；',
+  '  2b) 进度点 / 自动 / 重播那一排钉在手机框右下角（绝对定位），行数 / 点点再多也没被顶出画面；',
   '  3) 没有用 vh / vw / position: fixed；',
   '  4) 有 ctx._post("frameSize", {w,h})（量【.gv-phone 缩放后的 rect】）+ ctx._post("resize", 高度)；',
   '  5) 上面那张“必须保留的 id”表里的 id 一个都没少（尤其 #vol* 那一串和 data-a 那七个）。',
@@ -218,6 +222,47 @@ const userP = build('二', '与 CHAR 楼层配套的 USER 楼层',
  '  模板 → 宿主   edit / copy / up / down / delete / close / toggle-user-avatar   菜单按钮'].join('\n'),
 ['user.html', 'user.css', 'user.js']);
 
+/* ★ 悬浮楼层现在是【直挂】(引擎把它挂进酒馆页面的 shadow DOM 里, 没有 iframe / 没有沙箱),
+   所以这一份的"环境说明"和"能用什么库"必须跟另外两层分开写 —— 照旧版(沙箱)写出来的模板在真机上会踩坑 (v1.0.19) */
+const _iSand = common.indexOf('沙箱限制（很容易踩）');
+const _iOut = common.indexOf('输出格式（硬要求');
+const _iLibs = common.indexOf('  能用（下面这些宿主已经搬进来了');
+if (_iSand < 0 || _iOut < 0 || _iLibs < 0) throw new Error('common 里的分段标记找不到, 别乱改');
+const PANEL_ENV_SEC = [
+  '运行环境（★ 这一层跟另外两层【不一样】，照这一份写）',
+  '  悬浮楼层是【直接挂进酒馆页面】的：引擎把它挂在一个 shadow DOM 里 —— 没有 iframe、没有沙箱。所以：',
+  '  1) 外链资源都能加载：<img src="https://...">、外链字体、<link rel="stylesheet" href="https://..."> 都行',
+  '     （酒馆页面本身没有 CSP；jsdelivr 这类 CDN 实测能引进来）。',
+  '  2) position: fixed 能用（相对浏览器窗口）；vh / vw 也能用。',
+  '  3) 模板里的 document 是【代理】：getElementById / querySelector / querySelectorAll 走这个 shadow 根；',
+  '     addEventListener / removeEventListener 挂的是【酒馆页面的真文档】（"按住拖动、松手结束"照常写就行）；',
+  '     createElement 造出来的是酒馆页面的元素 —— 造完要 append 到你自己 shadow 里的节点上。',
+  '  4) window 就是酒馆窗口本身：读酒馆的全局可以（例如 window.triggerSlash），但别去改酒馆的 DOM / 样式 / 输入框。',
+  '  5) 面板【自己】定位、自己改大小：拖动 / 缩放都改自己的样式（left/top/width/height 或 transform）。',
+  '     ctx._post("move" / "resize" / "wantSize") 在直挂模式下宿主【直接忽略】（那是老 iframe 方案的外框协议，已废弃）——',
+  '     别把拖动 / 缩放做成"发消息让宿主挪外框"，那样在真机上就是拖不动。',
+  '  6) 内容区里那些【活 iframe】才是沙箱（见下面 2b）：不要给它们加 sandbox / pointer-events: none，也别自己截它的点击。',
+  '  7) 库：Font Awesome 和 highlight.js 酒馆页面里就有（实测可用）；Tailwind 只有酒馆自己用到的那几个类，',
+  '     Mermaid / animate.css 没有 —— 要用就自己写 <link> 引（能引进来），别假设宿主已经把整套搬好了。',
+  '  8) 类名一律 gv- 前缀；下面列出的 id / 类名 / data-a 必须保留、不能改名。',
+].join('\n');
+const PANEL_LIBS_SEC = [
+  '',
+  '这一层里能用什么（都在酒馆页面里，实测过）',
+  '  能用：',
+  '    · Font Awesome 全套图标 —— <i class="fa-solid fa-heart"></i> / <i class="fa-regular fa-star"></i> / <i class="fa-brands fa-github"></i>',
+  '    · highlight.js 代码高亮（酒馆自带，<pre><code class="language-js">…</code></pre>）',
+  '    · 内联 SVG、<img src="data:...">、CSS 里的 data: 背景图',
+  '    · 本地素材：模板里写 __gvasset:名字__（名字 = 制作器里「页面排版 → 从本地导入素材」导入的图），',
+  '      预览和导出都会换成那张图的 data URL —— 例如 background-image: url(__gvasset:房间__)',
+  '    · 外链：<link rel="stylesheet" href="https://..."> 和 <img src="https://..."> 都能加载（这一层没有沙箱）',
+  '  不能用（酒馆页面里没有，或者只有残缺的一份 —— 想要就自己 <link> 引）：',
+  '    · Tailwind —— 只有酒馆自己用到的那几个类（实测 .flex 生效、.p-4 没生效），别拿它排版',
+  '    · Mermaid、animate.css —— 完全没有',
+  '  一句话：字体图标 / 高亮 / SVG / data: / 外链都可以用；要引整库就写 <link>。',
+].join('\n');
+const panelCommon = PANEL_ENV_SEC + '\n\n' + common.slice(_iOut, _iLibs) + PANEL_LIBS_SEC;
+
 const panelP = build('三', '与 CHAR 楼层配套的悬浮窗',
 ['  这一层是【与 CHAR 楼层配套的悬浮窗】（制作器那个浮窗，显示楼层的附加内容）：上面一条标题栏（计数 + 一排按钮），下面是内容列表；',
  '  它自己还带三个内嵌页面（提示词 / 兜底转换 API / 导入素材包），并且能拖动、改大小、收成小球。',
@@ -234,7 +279,8 @@ const panelP = build('三', '与 CHAR 楼层配套的悬浮窗',
  '  列表项：.gv-panel-item .gv-panel-item-head .gv-pitem-name .gv-pitem-len .gv-pitem-tag',
  '          .gv-panel-actions .gv-act .gv-panel-item-body .gv-panel-inline-edit .gv-panel-inline-ta',
  '  状态类：.gv-on / .gv-mini（收成小球）/ .gv-editing / .gv-collapsed',
- '  注意：这一层里不能用 position: fixed，定位由宿主给的外框决定'].join('\n'),
+ '  定位：宿主给的挂载点是个 0×0 的绝对定位锚点，面板自己定位（默认 left/top 写在 #panel 上）。',
+ '  这一层是直挂的，position: fixed 也能用（相对浏览器窗口）—— 但拖动 / 缩放请改自己的 left/top/width/height，别依赖宿主外框'].join('\n'),
 ['  1) 握手：ctx._post("ready")；ctx.on("init", c) 拿 {floors, prompt, convertCfg, panelBox, panelOffset}；',
  '     之后 ctx.on("floors") 更新列表、ctx.on("toast") 弹提示。',
  '  2) 列表渲染：floors 里每项是 {id, name, raw, html, story}：raw = 原文（「源码」模式显示它）；',
@@ -253,17 +299,18 @@ const panelP = build('三', '与 CHAR 楼层配套的悬浮窗',
  '     （保存 → ctx._post("convertCfg", {...})）、导入素材包（选文件 → ctx._post("packFile", {name,size})）。',
  '  4) #btnRaw 切换"渲染 / 源码"显示；#btnRedraw → ctx._post("redraw")；',
  '     #btnMini → ctx._post("closePanel") 并把自己隐藏；#btnFold 收成小球 / 展开。',
- '  5) 拖动 → ctx._post("move", {dx,dy})；右下角拖动改大小；尺寸变化后上报',
- '     ctx._post("resize", 高度) + ctx._post("wantSize", {w,h})（宿主靠它撑外框）。',
+ '  5) 拖动 / 改大小：都是改【自己】的样式 —— 标题栏 mousedown 记起点，document mousemove 时改 #panel 的',
+ '     left/top；右下角的把手改 width/height（参考模板里就是这么写的，照它做）。',
+ '     ctx._post("move" / "resize" / "wantSize") 是老的 iframe 外框协议，直挂模式下宿主直接忽略 —— 别再用它。',
  '  6) 出错 try/catch 后 ctx._post("error", 消息)。'].join('\n'),
 ['  模板 → 宿主   ready         宿主 → 模板   init({floors, prompt, convertCfg, panelBox, panelOffset})',
  '  宿主 → 模板   floors(列表) / toast(提示)',
  '  模板 → 宿主   saveFloor({id,text})   保存某一项',
  '  模板 → 宿主   setPrompt(文本) / convertCfg(配置) / packFile({name,size})',
  '  模板 → 宿主   redraw / closePanel   重绘 / 关闭浮窗',
- '  模板 → 宿主   move({dx,dy}) / resize(高度) / wantSize({w,h})',
+ '  （已废弃）模板 → 宿主   move({dx,dy}) / resize(高度) / wantSize({w,h})   —— 直挂模式下宿主忽略，面板自己定位',
  '  模板 → 宿主   error(消息)   出错上报'].join('\n'),
-['panel.html', 'panel.css', 'panel.js']);
+['panel.html', 'panel.css', 'panel.js'], panelCommon);
 
 /* ★ 第 9 条 + 有/无音频: char 一共 4 套默认预设 —— 竖/横 × 有/无音频, 各出一份提示词 (选哪套, 这边就给哪套) */
 const T0 = { html: rd('char.html'), css: rd('char.css'), js: rd('char.js') };
