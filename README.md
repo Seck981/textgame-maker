@@ -197,7 +197,15 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 
 ---
 
-© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.10**
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.11**
+
+**v1.0.11 改了什么**：修好**气泡贴纸根本没进导出脚本**（真机里 `|bubble:名字|` 点了不出现）。
+根因在导出烘焙：`bake()` 只认 `data:` 开头的产物，而 `_resizeSmall()` 对**本来就不大**的图（长边 ≤ cap）会**原样返回地址**、不走 canvas ——
+内置那 20 张气泡贴纸恰好都是小图 → `bake` 全部当失败丢掉 → 脚本里 `bubbleMap: {}` → 引擎 `showSticker` 里 `if (!url) return;` 静默忽略 → 气泡不出现。
+（背景 / 立绘是大图、走了 canvas，所以只有气泡中招。）
+修法：`bake` 现在对"小图没重编码"的结果**再抓成 `data:`**，并且导出时**强制走一遍 webp 重编码**（贴纸按 512px 烘）；
+导出状态行新增一条报账：`气泡贴纸: N 张进脚本 · 约 xxKB`（一张都没烘进去会直接红字提示）。
+实测（同一份方案）：修之前 `引擎 bubbleMap(url0)`、脚本 17245KB；修之后 `bubbleMap(url20)`、**贴纸 20 张 ≈1569KB、整份脚本 8566KB**（少了一半）。
 
 **v1.0.10 改了什么**：悬浮窗那层「指导提示词」跟上 v1.0.9 的新规则 —— 引擎现在是按**「上级里有没有 `#send_textarea`」**决定要不要给活 iframe 接管 parent 的，
 所以提示词里写明：**面板模板里别放 `id="send_textarea"` 的元素**（放了引擎会以为上级就是酒馆页面、不接管，卡片点选项又变成"一点反应都没有"，

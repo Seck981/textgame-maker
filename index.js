@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.10', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.11', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
       /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
@@ -650,7 +650,7 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
      现在: ① 只挑【这一屏用得到的】 ② 直接从 blob 画到 canvas 缩小 (连大 base64 都不生成),
      长边缩到 cap 像素、webp 带透明通道, 一张 ~100KB; 结果按 素材标识+cap 缓存 */
   const _smallCache = new Map();
-  function _resizeSmall(src, cap) {
+  function _resizeSmall(src, cap, force) {
     return new Promise(function (res) {
       try {
         const im = new Image();
@@ -658,7 +658,8 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
           try {
             const w = im.naturalWidth || 0, h = im.naturalHeight || 0;
             const k = Math.min(1, (Number(cap) || 900) / Math.max(w || 1, h || 1));
-            if (!w || !h || k >= 1) return res(src);            // 本来就不大 -> 原样用
+            /* ★ force: 小图也要走一遍 canvas(webp 重编码) —— 给导出烘焙用, 不然原样 PNG 会撑爆脚本 */
+            if (!w || !h || (k >= 1 && !force)) return res(src);  // 本来就不大 -> 原样用
             const cv = document.createElement('canvas');
             cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k));
             const cx = cv.getContext('2d');
@@ -675,10 +676,10 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
     });
   }
   /* e 可以是素材对象({blobId} / {kind:'url',src}) 也可以是现成的 data:/http 地址 */
-  async function previewSmall(e, cap) {
+  async function previewSmall(e, cap, force) {
     if (!e) return '';
     const c = Number(cap) || 900;
-    const key = c + '|' + (typeof e === 'string' ? (e.length + '|' + e.slice(0, 60) + e.slice(-40)) : String(e.blobId || e.src || e.name || ''));
+    const key = (force ? 'F' : '') + c + '|' + (typeof e === 'string' ? (e.length + '|' + e.slice(0, 60) + e.slice(-40)) : String(e.blobId || e.src || e.name || ''));
     if (_smallCache.has(key)) return _smallCache.get(key);
     let src = '', tmp = '';
     try {
@@ -691,8 +692,8 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
         const b = await blobGet(e.blobId);
         if (b) { tmp = URL.createObjectURL(b); src = tmp; }
       }
-      let out = src ? await _resizeSmall(src, c) : '';
-      if (!out && typeof e !== 'string') { const u = await previewUrl(e); if (u) out = await _resizeSmall(u, c); }   // 兜底
+      let out = src ? await _resizeSmall(src, c, force) : '';
+      if (!out && typeof e !== 'string') { const u = await previewUrl(e); if (u) out = await _resizeSmall(u, c, force); }   // 兜底
       if (_smallCache.size > 150) { try { _smallCache.clear(); } catch (x) {} }   // 别无限长
       _smallCache.set(key, out);
       return out;
@@ -4083,10 +4084,25 @@ const stripAudio = (t) => {
        对方之后导入素材包 ZIP 时以包为准 (包里走 1440 高清), 这里只是开箱即用的兜底。
        音频: 只烘 ≤2MB 的 (浏览器里没有 mp3 编码器, MediaRecorder 只能实时录 —— 大 BGM 重编码不现实), 超过的列出来。 */
     const bakeStat = { img: 0, imgKB: 0, audio: 0, audioKB: 0, skipAudio: [], saved: [], how: {} };
-    const bake = async (e) => {
+    /* ★ 小图会被 _resizeSmall 原样退回来(没走 canvas) —— 那时拿到的是地址而不是 data:,
+       以前这里直接当失败扔掉: 内置那 20 张气泡贴纸全是小图 -> bubbleMap 烘成空 -> 真机气泡不出现 (2026-09-26 的 bug)。
+       所以兜一层: 不是 data: 就抓成 data: 再写进脚本。 */
+    const urlToDataUrl = async (u) => {
       try {
-        const d = await previewSmall(e, 900);
+        const r = await fetch(u, { credentials: 'same-origin' });
+        if (!r.ok) return '';
+        const b = await r.blob();
+        return await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = () => res(''); fr.readAsDataURL(b); });
+      } catch (e) { return ''; }
+    };
+    const bake = async (e, cap) => {
+      try {
+        const d = await previewSmall(e, Number(cap) || 900, true);   // force: 小图也重编码成 webp, 别把原图 PNG 塞进脚本
         if (d && d.indexOf('data:') === 0) { bakeStat.img++; bakeStat.imgKB += Math.round(d.length / 1024); return d; }
+        if (d) {                                   // 本来就小: 拿回来的是地址 -> 抓成 data: 再用
+          const u = await urlToDataUrl(d);
+          if (u && u.indexOf('data:') === 0) { bakeStat.img++; bakeStat.imgKB += Math.round(u.length / 1024); return u; }
+        }
       } catch (err) {}
       return '';
     };
@@ -4109,8 +4125,13 @@ const stripAudio = (t) => {
         if (urlPool.indexOf(d) < 0) urlPool.push(d);
       }
     }
-    for (const s of (p.stickers || [])) { if (s && s.name && !_isUrl(s.url) && !(s.name in urlBubble)) { const d = await bake(s); if (d) urlBubble[s.name] = d; } }
-    try { for (const [id, cn] of stickerList(p)) { if (cn && !(id in urlBubble)) { const d = await bake(stickerUrl(id)); if (d) urlBubble[id] = d; } } } catch (e) {}
+    /* ★ 气泡贴纸给 512 就够 (贴纸显示出来也就一两百像素) —— 20 张从 10MB 压到 ~1MB */
+    for (const s of (p.stickers || [])) { if (s && s.name && !_isUrl(s.url) && !(s.name in urlBubble)) { const d = await bake(s, 512); if (d) urlBubble[s.name] = d; } }
+    try { for (const [id, cn] of stickerList(p)) { if (cn && !(id in urlBubble)) { const d = await bake(stickerUrl(id), 512); if (d) urlBubble[id] = d; } } } catch (e) { report.push('!! 气泡贴纸烘焙出错: ' + e.message); }
+    /* ★ 报出来: 气泡一直"静默不出现"就是因为以前这里没人看 (lesson 35) */
+    report.push(Object.keys(urlBubble).length
+      ? ('气泡贴纸: ' + Object.keys(urlBubble).length + ' 张进脚本 · 约 ' + Math.round(Object.values(urlBubble).join('').length / 1024) + 'KB')
+      : '!! 气泡贴纸: 一张都没烘进去 (脚本里 bubbleMap 会是空的, 真机点 bubble:名字 不会出现)');
     const fileDataUrl = async (blobId) => {
       const b = await blobGet(blobId); if (!b) return '';
       return await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = () => res(''); fr.readAsDataURL(b); });
