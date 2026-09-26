@@ -203,15 +203,22 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0 !important; height: 
 .gv-sheet-toast{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);
   background:rgba(255,143,177,.95);color:#1a1016;padding:4px 12px;border-radius:999px;font-size:12px;z-index:9;}
 .gv-sheet-toast.bad{background:rgba(255,90,90,.95);color:#fff;}
-.gv-panel-rs{position:absolute;right:0;bottom:0;width:20px;height:20px;z-index:7;cursor:nwse-resize;touch-action:none;
+/* ★ 缩放把手: 左/右/上/下 四条边 + 右下角, 都能拖。
+   以前只有右下角那一个 20px 的小三角能拖, 右边和下边那两条又被基类的 width/height:20px 卡成
+   7×20 / 20×7 的小条 (等于只有角能拖), 左边和上边压根没有 —— 很不方便。
+   基类只留"定位 + 层级 + 手势", 尺寸 / 方向 / 光标交给各自的类。 */
+.gv-panel-rs{position:absolute;z-index:7;touch-action:none;background-color:transparent;
+  transition:background-color .15s;}
+.gv-rs-corner{right:0;bottom:0;width:20px;height:20px;cursor:nwse-resize;
   background:linear-gradient(135deg,transparent 44%,rgba(255,255,255,.55) 50%,transparent 56%,
     transparent 64%,rgba(255,255,255,.55) 70%,transparent 76%);}
-.gv-panel-rs:hover{background-color:rgba(255,255,255,.12);}
-/* ★ 边框也能拖: 右边一条改宽、下边一条改高 (以前只有右下角那一个 16px 的小把手, 基本点不到) */
-.gv-panel-rs-r{position:absolute;right:0;top:16px;bottom:16px;width:7px;cursor:ew-resize;background:transparent;z-index:7;touch-action:none;}
-.gv-panel-rs-b{position:absolute;bottom:0;left:16px;right:16px;height:7px;cursor:ns-resize;background:transparent;z-index:7;touch-action:none;}
-.gv-panel-rs-r:hover{background:rgba(255,255,255,.10);}
-.gv-panel-rs-b:hover{background:rgba(255,255,255,.10);}
+.gv-rs-corner:hover{background-color:rgba(255,255,255,.12);}
+.gv-panel-rs-t{top:0;left:16px;right:16px;height:7px;cursor:ns-resize;}
+.gv-panel-rs-b{bottom:0;left:16px;right:16px;height:7px;cursor:ns-resize;}
+.gv-panel-rs-l{left:0;top:16px;bottom:16px;width:7px;cursor:ew-resize;}
+.gv-panel-rs-r{right:0;top:16px;bottom:16px;width:7px;cursor:ew-resize;}
+.gv-panel-rs-t:hover,.gv-panel-rs-b:hover,
+.gv-panel-rs-l:hover,.gv-panel-rs-r:hover{background-color:rgba(255,255,255,.14);}
 
 /* 面板自己不出滚动条 (内容超出由 .gv-panel-body 内部滚) */
 .gv-panel{overflow:hidden;}

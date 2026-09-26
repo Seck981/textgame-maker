@@ -251,14 +251,13 @@ function syncEditorHeight(){
   body.style.minHeight = Math.max(160, Math.round(whole - chrome)) + 'px';
 }
 
-/* ---------- 改大小: 右下角 / 右边框 / 下边框都能拖 (沙箱内, 不记录尺寸) ---------- */
+/* ---------- 改大小: 左/右/上/下 四条边 + 右下角, 都能拖 (沙箱内, 不记录尺寸) ---------- */
 (function(){
   function mkHandle(cls, title){ var h = el('div', 'gv-panel-rs ' + cls); h.title = title; root.appendChild(h); return h; }
-  /* ★ 类名要和 CSS 对上: 模板 CSS 里写的是 .gv-panel-rs-r / .gv-panel-rs-b
-     (以前写成 gv-rs-r/gv-rs-b -> 选择器匹配不上, 两条边把手被渲染成跟右下角一样大的方块) */
-  var corner = mkHandle('gv-rs-corner', '拖动改大小');
-  var edgeR = mkHandle('gv-panel-rs-r', '拖动改宽度');
-  var edgeB = mkHandle('gv-panel-rs-b', '拖动改高度');
+  /* ★ 类名要和 CSS 对上: .gv-panel-rs-t/-b/-l/-r (四条边) + .gv-rs-corner (右下角)。
+     以前只挂了右边和下边两个把手、左边和上边根本没有, 而且那两条还被 CSS 的 width/height:20px
+     卡成小条 —— 结果就是"只有右下角能拖", 很不方便。现在四个方向都能拖。 */
+  var MIN_W = 240, MIN_H = 120;
   var rs = null;
   function start(e, dir){
     e.stopPropagation(); e.preventDefault();
@@ -269,15 +268,40 @@ function syncEditorHeight(){
     root.style.left = Math.round(r.left) + 'px';
     root.style.top = Math.round(r.top) + 'px';
   }
-  corner.addEventListener('mousedown', function(e){ start(e, 'se'); });
-  edgeR.addEventListener('mousedown', function(e){ start(e, 'e'); });
-  edgeB.addEventListener('mousedown', function(e){ start(e, 's'); });
+  /* 顺序有讲究: 右下角最后加 -> 同层级时它压在最上面, 角上那一下拖的是"同时改宽高" */
+  [['gv-panel-rs-t', '拖动改高度（上边）', 'n'],
+   ['gv-panel-rs-b', '拖动改高度（下边）', 's'],
+   ['gv-panel-rs-l', '拖动改宽度（左边）', 'w'],
+   ['gv-panel-rs-r', '拖动改宽度（右边）', 'e'],
+   ['gv-rs-corner', '拖动改大小（右下角）', 'se']].forEach(function(it){
+    mkHandle(it[0], it[1]).addEventListener('mousedown', function(e){ start(e, it[2]); });
+  });
   document.addEventListener('mousemove', function(e){
     if (!rs) return;
     var vw = window.innerWidth || 400, vh = window.innerHeight || 640;
-    var maxW = Math.max(240, vw - rs.l - 2), maxH = Math.max(120, vh - rs.t - 2);
-    if (rs.dir.indexOf('e') >= 0) root.style.width = Math.round(Math.max(240, Math.min(maxW, rs.w + (e.clientX - rs.x)))) + 'px';
-    if (rs.dir.indexOf('s') >= 0) root.style.height = Math.round(Math.max(120, Math.min(maxH, rs.h + (e.clientY - rs.y)))) + 'px';
+    var dx = e.clientX - rs.x, dy = e.clientY - rs.y, dir = rs.dir;
+    /* 右边(含角): 改宽, 最多到窗口右边缘 */
+    if (dir.indexOf('e') >= 0) {
+      var maxW = Math.max(MIN_W, vw - rs.l - 2);
+      root.style.width = Math.round(Math.max(MIN_W, Math.min(maxW, rs.w + dx))) + 'px';
+    }
+    /* 左边: 改宽, 右边缘钉住 -> 面板跟着往左挪 */
+    if (dir.indexOf('w') >= 0) {
+      var nw = Math.round(Math.max(MIN_W, Math.min(Math.max(MIN_W, rs.l + rs.w), rs.w - dx)));
+      root.style.width = nw + 'px';
+      root.style.left = Math.round(rs.l + (rs.w - nw)) + 'px';
+    }
+    /* 下边(含角): 改高, 最多到窗口下边缘 */
+    if (dir.indexOf('s') >= 0) {
+      var maxH = Math.max(MIN_H, vh - rs.t - 2);
+      root.style.height = Math.round(Math.max(MIN_H, Math.min(maxH, rs.h + dy))) + 'px';
+    }
+    /* 上边: 改高, 下边缘钉住 -> 面板跟着往上挪 */
+    if (dir.indexOf('n') >= 0) {
+      var nh = Math.round(Math.max(MIN_H, Math.min(Math.max(MIN_H, rs.t + rs.h), rs.h - dy)));
+      root.style.height = nh + 'px';
+      root.style.top = Math.round(rs.t + (rs.h - nh)) + 'px';
+    }
     syncEditorHeight();
     fitSelf();
   });
