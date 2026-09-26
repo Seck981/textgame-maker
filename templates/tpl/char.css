@@ -104,7 +104,8 @@
 /* ---------- 对话框 ---------- */
 .gv-ui { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; padding: 0 8px 8px; }
 .gv-box {
-  position: relative; min-height: 30%; border-radius: 16px;
+  position: relative; min-height: 30%; margin-bottom: 34px;   /* ★ 给右下角那排 HUD 留出位置, 对话框不跟它重叠 */
+  border-radius: 16px;
   background: var(--gv-panel);
   backdrop-filter: blur(9px) saturate(1.2); -webkit-backdrop-filter: blur(9px) saturate(1.2);
   border: 1px solid rgba(255,255,255,.14);
@@ -143,11 +144,21 @@
 .gv-caret.gv-on { opacity: .9; }
 @keyframes gv-caret { 50% { opacity: 0 } }
 
-.gv-hud { display: flex; align-items: center; justify-content: space-between; padding: 8px 6px 2px; color: rgba(255,255,255,.72); font-size: 12px; }
-.gv-dots { display: flex; gap: 4px; align-items: center; }
-.gv-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.28); }
+/* ★ HUD(进度点 + 自动/重播) 钉在画面右下角, 不再跟着点点/行数跑。
+   以前它在对话框下面占一行普通流: 点点一多就把「自动/重播」顶出画面右边缘
+   (实测 40 句顶出 42px、60 句顶出 222px, 按钮直接看不见)。
+   现在 HUD 绝对定位(相对 .gv-ui, 而 .gv-ui 的底边就是画面底边) -> 永远在右下角;
+   点点放不下就自己变窄/被裁, 按钮 flex:0 0 auto 永不移动。 */
+.gv-hud {
+  position: absolute; right: 8px; bottom: 8px; z-index: 12;
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  max-width: calc(100% - 16px);
+  color: rgba(255,255,255,.72); font-size: 12px;
+}
+.gv-dots { display: flex; gap: 4px; align-items: center; justify-content: flex-end; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.gv-dot { flex: 0 1 5px; min-width: 2px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.28); }
 .gv-dot.gv-on { background: var(--gv-accent); transform: scale(1.5); }
-.gv-btns { display: flex; gap: 6px; }
+.gv-btns { display: flex; gap: 6px; flex: 0 0 auto; }
 .gv-btn {
   cursor: pointer; padding: 3px 10px; border-radius: 999px;
   background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16);

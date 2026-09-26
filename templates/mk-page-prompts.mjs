@@ -1,10 +1,6 @@
 import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-/* repo version: inputs/outputs follow this file's own folder (templates/tpl/ and templates/page-prompts.json) */
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const T = path.join(HERE, 'tpl') + path.sep;
-const OUT = path.join(HERE, 'page-prompts.txt');
+const T = 'D:/toomanybug/galgame/tpl-build/tpl/';
+const OUT = 'D:/toomanybug/galgame/docs/页面模板提示词-草稿.txt';
 const rd = f => fs.readFileSync(T + f, 'utf8').replace(/\s+$/, '');
 const F = String.fromCharCode(96).repeat(3);
 const SEP = '='.repeat(70);
@@ -301,7 +297,7 @@ const charLN = withVariant(charP, '横版 · 无音频',
 const body = [head, charP, charPN, charLA, charLN, userP, panelP].join('\n\n' + SEP + '\n\n') + '\n';
 fs.writeFileSync(OUT, body);
 /* ★ 给插件用的那三份（不含文档开头，只有各自那一段） */
-const JSONOUT = path.join(HERE, 'page-prompts.json');
+const JSONOUT = 'D:/toomanybug/galgame/tpl-build/page-prompts.json';
 fs.writeFileSync(JSONOUT, JSON.stringify({ char: charP, charNoAudio: charPN, charLand: charLA, charLandNoAudio: charLN, user: userP, panel: panelP }, null, 0));
 console.log('写出(给插件):', JSONOUT, '| char', charP.length, '| charNoAudio', charPN.length, '| charLand', charLA.length, '| charLandNoAudio', charLN.length, '| user', userP.length, '| panel', panelP.length);
 console.log('写出:', OUT, '|', body.length, '字 /', body.split('\n').length, '行');

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 const DIR = 'D:/toomanybug/galgame/tpl-build/tpl/';
-const P = (process.env.ST_DIR || '/path/to/SillyTavern') + '/data/default-user/extensions/TextGameMaker/index.js';
+const P = 'D:/SillyTavern/SillyTavern/data/default-user/extensions/TextGameMaker/index.js';
 const tpl = {};
 for (const k of ['char', 'user', 'panel']) {
   tpl[k] = {

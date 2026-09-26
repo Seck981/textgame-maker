@@ -1,11 +1,9 @@
 import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-/* ★ 先按当前的 tpl/ 重跑一遍生成器再烘: 免得改了 mk-page-prompts.mjs 却烘到旧的 page-prompts.json */
-await import('./mk-page-prompts.mjs');
-const P = (process.env.ST_DIR || '/path/to/SillyTavern') + '/data/default-user/extensions/TextGameMaker/index.js';
-const J = path.join(HERE, 'page-prompts.json');
+/* ★ 先按当前的 tpl/ 重跑一遍生成器: 免得改了 mk-page-prompts.mjs 却烘到旧的 page-prompts.json
+   (2026-09-26 就踩过这个: 插件里是新的, 中间那份 json 还是旧的) */
+await import('../tools/mk-page-prompts.mjs');
+const P = 'D:/SillyTavern/SillyTavern/data/default-user/extensions/TextGameMaker/index.js';
+const J = 'D:/toomanybug/galgame/tpl-build/page-prompts.json';
 const prompts = JSON.parse(fs.readFileSync(J, 'utf8'));
 let s = fs.readFileSync(P, 'utf8');
 const block = 'const PAGE_PROMPTS = ' + JSON.stringify(prompts) + ';';
