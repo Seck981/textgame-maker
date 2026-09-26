@@ -6,6 +6,7 @@ var TYPESPEED = 28, AUTODELAY = 1600, BUBBLEMS = 1900;
 var timers = [], destroyed = false;
 var idx = -1, typing = false, typeTimer = null, autoOn = false, autoTimer = null, curBg = null, N = 0;
 var slotKeys = [], sprites = {}, activeSprite = null;
+var curSlot = '';            /* ★ 当前这一行的站位: 气泡按站位选落点 */
 
 function $(id){ return document.getElementById(id); }
 function el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -175,8 +176,10 @@ function showSticker(name){
   var map = ctx.bubbles || {}, url = map[name];
   if (!url) { warnMissing('气泡', name, map); return; }   /* ★ 不再随便挑一个贴纸顶上 */
   if (!url) return;
-  /* 单个贴纸单独调过落点就用它自己的 (制作器「切换气泡」里一个个摆的), 否则用默认 */
-  var p = (ctx.bubblePosEach || {})[name] || ctx.bubblePos || {};
+  /* 落点优先级: 这张贴纸单独调的 > 这个站位单独调的 > 默认 */
+  var p = (ctx.bubblePosEach || {})[name]
+    || (curSlot && (ctx.bubblePosSlot || {})[curSlot])
+    || ctx.bubblePos || {};
   stickerImg.src = url;
   sticker.style.setProperty('--gv-bx', (p.x != null ? p.x : 78) + '%');
   sticker.style.setProperty('--gv-by', (p.y != null ? p.y : 24) + '%');
@@ -254,6 +257,9 @@ function show(i){
 
   /* 站位: 说话的那张亮, 其它淡下去 */
   var sl = String(line.slot || '').trim().toLowerCase();
+  /* ★ 气泡按【用户自己写的】站位选落点: 预览里没写站位的行会被默认成第一个站位(为了立绘好看),
+     那种行按"没站位"算, 于是真机/预览的气泡落点一致 */
+  curSlot = (line.exp === false) ? '' : sl;
   /* 旁白 / {{user}} 那一行 / 没匹配到立绘 -> 这行不该有立绘 (重播回第一行时不能还挂着上一个人的图) */
   var fentry = (narrLike || isUser) ? null : resolveFaceEntry(line.face, line.name);   // ★ 路人也不配立绘
   var spk = (fentry && fentry.url) ? spriteFor(sl) : null;

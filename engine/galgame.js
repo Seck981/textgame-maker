@@ -49,6 +49,7 @@
     seMap: {},                  /* 音效: 名字 -> 音频地址 */
     bubblePos: { x: 78, y: 24, scale: 1 },
     bubblePosEach: {},          /* 单个贴纸单独调过的落点: { 贴纸名: {x,y,scale} } */
+  bubblePosSlot: {},          /* 每个【站位】各一套气泡落点: { 站位: {x,y,scale} } —— 优先于 bubblePos, 低于 bubblePosEach */
     bubbleAnim: {},
     bubbleMs: 1900,
     /* 自定义演出组 */
@@ -653,6 +654,7 @@
     }
 
     /* ---------- 情绪气泡贴纸 ---------- */
+    let curSlot = '';                     /* ★ 当前这一行的站位 (show 里赋值): 气泡按站位选落点 */
     const sticker = el('div', 'gv-sticker');
     const stickerImg = el('img');
     stickerImg.addEventListener('error', function () { stickerImg.style.display = 'none'; });
@@ -664,8 +666,10 @@
       let url = map[name];
       if (!url) { const ks = Object.keys(map); if (ks.length) url = map[ks[hash(name) % ks.length]]; }
       if (!url) return;                       // 没素材就静默忽略, 不报错
-      /* 单个贴纸单独调过落点就用它自己的, 否则用默认 */
-      const p = (CONFIG.bubblePosEach || {})[name] || CONFIG.bubblePos || {};
+      /* 落点优先级: 这张贴纸单独调的 > 这个站位单独调的 > 默认 */
+      const p = (CONFIG.bubblePosEach || {})[name]
+        || (curSlot && (CONFIG.bubblePosSlot || {})[curSlot])
+        || CONFIG.bubblePos || {};
       stickerImg.src = url;
       sticker.style.setProperty('--gv-bx', (p.x != null ? p.x : 78) + '%');
       sticker.style.setProperty('--gv-by', (p.y != null ? p.y : 24) + '%');
@@ -767,6 +771,7 @@
 
       /* 站位: 选中对应的 sprite —— 多角色同框时, 非说话者淡下去 */
       const _sl = String(line.slot || '').trim().toLowerCase();
+      curSlot = _sl;
       /* 旁白 / {{user}} 说的那一行 / 没匹配到立绘 -> 这行不该有立绘 (否则重播回第一行时还挂着上一个人的图) */
       const fentry = (narrLike || isUser) ? null : resolveFaceEntry(line.face, line.name);   // ★ 路人也不配立绘
       const spk = (fentry && fentry.url) ? spriteFor(_sl) : null;
@@ -1747,6 +1752,7 @@ function injectBubbleCss(css) {
       if (!o) return;
       if (o.pos) CONFIG.bubblePos = o.pos;
       if (o.posEach) CONFIG.bubblePosEach = o.posEach;
+      if (o.posSlot) CONFIG.bubblePosSlot = o.posSlot;   /* 每个站位一套气泡落点 */
       if (o.anim) CONFIG.bubbleAnim = o.anim;
       if (o.ms) CONFIG.bubbleMs = o.ms;
       if (o.css != null) injectBubbleCss(o.css);     // 改过的内置气泡演出 / 自己写的

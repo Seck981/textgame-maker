@@ -27,6 +27,7 @@ const CONFIG = {
   /* 情绪气泡: 默认落点/大小, 每个贴纸单独调过的落点, 每个贴纸的入场动画, 显示时长 */
   bubblePos: { x: 78, y: 24, scale: 1 },
   bubblePosEach: {},
+  bubblePosSlot: {},          /* 每个站位各一套气泡落点 (制作器「气泡位置 → 调整哪个站位」) */
   bubbleAnim: {},
   /* 改过的内置气泡演出 / 自己写的气泡演出 (CSS), 由制作器导出时写入 */
   bubbleCss: '',
@@ -863,6 +864,7 @@ async function tplPayload(kind, data) {
     effects: C.effects || {},
     slotBoxes: C.slotBoxes || {},
     bubblePosEach: C.bubblePosEach || {},
+    bubblePosSlot: C.bubblePosSlot || {},   /* ★ 每个站位一套气泡落点 (模板按当前行的 slot 选) */
     bubbleCss: CONFIG.bubbleCss || '',
     /* ★ 这一楼的音乐/音效切换点 + 原始文本 (引擎那条路是 parse() 给的, 模板这条路要手动带) */
     bgmAt: (data && data.bgmAt) || [], seAt: (data && data.seAt) || [],
@@ -1407,7 +1409,7 @@ setInterval(() => { if (enabled) sweep(); }, CONFIG.sweepMs);
   try { P.Galgame.setSlotPos(CONFIG.slotPos); } catch (e) {}
   try { P.Galgame.setSlotBoxes(CONFIG.slotBoxes); } catch (e) {}
   try { P.Galgame.setEffects(CONFIG.effects); } catch (e) {}
-  try { P.Galgame.setBubbles({ pos: CONFIG.bubblePos, posEach: CONFIG.bubblePosEach, anim: CONFIG.bubbleAnim, ms: CONFIG.bubbleMs, css: CONFIG.bubbleCss }); } catch (e) {}
+  try { P.Galgame.setBubbles({ pos: CONFIG.bubblePos, posEach: CONFIG.bubblePosEach, posSlot: CONFIG.bubblePosSlot, anim: CONFIG.bubbleAnim, ms: CONFIG.bubbleMs, css: CONFIG.bubbleCss }); } catch (e) {}
   try { P.Galgame.setAssets({ audio: CONFIG.audioMap, se: CONFIG.seMap }); } catch (e) {}
   try { P.Galgame.setTemplates(CONFIG.pages); } catch (e) {}
   injectFormat();   // 格式提示词由脚本注入, 不再写在角色卡里
