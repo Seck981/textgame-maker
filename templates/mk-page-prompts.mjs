@@ -249,8 +249,7 @@ const PANEL_ENV_SEC = [
 ].join('\n');
 const PANEL_LIBS_SEC = [
   '',
-  '这一层里能用什么（都在酒馆页面里，实测过）',
-  '  能用：',
+  '  能用（酒馆页面里现成的，实测过）：',
   '    · Font Awesome 全套图标 —— <i class="fa-solid fa-heart"></i> / <i class="fa-regular fa-star"></i> / <i class="fa-brands fa-github"></i>',
   '    · highlight.js 代码高亮（酒馆自带，<pre><code class="language-js">…</code></pre>）',
   '    · 内联 SVG、<img src="data:...">、CSS 里的 data: 背景图',
