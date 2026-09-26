@@ -6,11 +6,10 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.6', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.7', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
-  /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步
-     (tpl-build/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
+    /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
   /* ==GV-RICH-START== 悬浮窗富渲染: 本段必须保持自包含 —— tpl-build/sync-rich.mjs
        会把整段抄进插件(index.js)给预览用, 两边共用一套切分/围栏代码 */
     var FENCE3 = String.fromCharCode(96, 96, 96);
@@ -26,8 +25,11 @@
 
     var PRELUDE2 = [
       "(function(){",
+      "  /* ★ 悬浮窗那种嵌套沙箱里 window.parent 是跨源的: 先探一次, 整段 prelude 都靠这个开关决定吵不吵 */",
+      "  var __gvNeedShim = false;",
+      "  try { __gvNeedShim = (window.parent !== window) && !window.parent.document; } catch (e) { __gvNeedShim = true; }",
+      "  try { window._ = window.parent._; } catch (e) {}",
       "  try {",
-      "    window._ = window.parent._;",
       "    var id = (window.frameElement && window.frameElement.id) || window.name;",
       "    if (id) { window.__TH_IFRAME_ID = id; if (!window.name) window.name = id; }",
       "    var TH = window.parent.TavernHelper || {};",
@@ -42,16 +44,73 @@
       "      lod.set(window, \"__VUE_OPTIONS_API__\", true);",
       "      lod.set(window, \"__VUE_PROD_HYDRATION_MISMATCH_DETAILS__\", false);",
       "    }",
-      "    Object.defineProperty(window, \"SillyTavern\", { get: function(){",
-      "      var ST = lod.get(window.parent, \"SillyTavern\");",
+      "  } catch (e) { if (!__gvNeedShim) console.warn(\"gv prelude\", e); }",
+      "  /* SillyTavern 单独一层 try: 上面那段拿不到上级也不该把它带走 (悬浮窗里就靠假 parent 兜底) */",
+      "  try {",
+      "    Object.defineProperty(window, \"SillyTavern\", { configurable: true, get: function(){",
+      "      var PP = window.parent || {};",
+      "      var ST = (lod && lod.get) ? lod.get(window.parent, \"SillyTavern\") : PP.SillyTavern;",
+      "      if (!ST || !ST.getContext) ST = PP.SillyTavern;",
+      "      if (!ST || !ST.getContext) return { getContext: function(){ return {}; } };",
       "      var g = function(){ return Object.assign({}, ST.getContext()); };",
       "      return Object.assign({}, g(), { getContext: g });",
       "    }});",
-      "  } catch (e) { console.warn(\"gv prelude\", e); }",
+      "  } catch (e) { if (!__gvNeedShim) console.warn(\"gv prelude SillyTavern\", e); }",
       "  function fit(){ try { var h = document.body.scrollHeight; if (h > 20 && window.frameElement) window.frameElement.style.height = (h + 10) + \"px\"; try { parent.postMessage({ __gvFit: 1, h: h }, \"*\"); } catch(e2){} } catch(e){} }",
       "  window.addEventListener(\"load\", function(){ fit(); setTimeout(fit, 250); setTimeout(fit, 900); });",
       "  try { new ResizeObserver(function(){ setTimeout(fit, 50); }).observe(document.documentElement); } catch(e){}",
       "  try { new MutationObserver(function(){ setTimeout(fit, 60); }).observe(document.documentElement, { subtree: true, childList: true, attributes: true }); } catch(e){}",
+      "  /* ---- ★ 沙箱里的卡片想\"点选项填进输入框\"时, 它写的是 window.parent.document.querySelector('#send_textarea')",
+      "     或 window.parent.triggerSlash(...) —— 但在我们这里 window.parent 是宿主模板(独立源, 拿不到酒馆)。",
+      "     所以给 window.parent / $ / TavernHelper / triggerSlash 做一层假代理, 真正的动作 postMessage 给最外层页面执行 ---- */",
+      "  var __gvRealParent = window.parent;",
+      "  /* ★ 只在真拿不到上级时(悬浮窗那种嵌套沙箱)才装假 parent; 楼里正常的活 iframe 是同源, 一个字节都不动 */",
+      "  if (__gvNeedShim) {",
+      "  function __gvCall(fn, arg) { try { window.top.postMessage({ __gvTH: 1, fn: fn, arg: arg == null ? '' : String(arg) }, '*'); } catch (e) {} }",
+      "  function __gvEl() {",
+      "    var el = { textContent: '', innerText: '', innerHTML: '', style: {}, dataset: {}, checked: false, disabled: false,",
+      "      classList: { add: function(){}, remove: function(){}, toggle: function(){}, contains: function(){ return false; } },",
+      "      setAttribute: function(){}, getAttribute: function(){ return null; }, removeAttribute: function(){},",
+      "      addEventListener: function(){}, removeEventListener: function(){}, appendChild: function(){}, removeChild: function(){},",
+      "      focus: function(){}, blur: function(){}, click: function(){}, select: function(){}, dispatchEvent: function(){ return true; },",
+      "      querySelector: function(){ return null; }, querySelectorAll: function(){ return []; },",
+      "      getBoundingClientRect: function(){ return { top: 0, left: 0, width: 0, height: 0 }; },",
+      "      val: function(v){ if (v === undefined) return this.value; this.value = String(v); return this; },",
+      "      text: function(){ return this; }, html: function(){ return this; }, on: function(){ return this; },",
+      "      css: function(){ return this; }, attr: function(){ return this; }, prop: function(){ return this; },",
+      "      show: function(){ return this; }, hide: function(){ return this; }, trigger: function(){ return this; }, off: function(){ return this; } };",
+      "    try { Object.defineProperty(el, 'value', { get: function(){ return this._v || ''; }, set: function(v){ this._v = String(v); __gvCall('setInput', this._v); }, configurable: true }); } catch (e) {}",
+      "    return el;",
+      "  }",
+      "  var __gvE = __gvEl();",
+      "  var __gvBtn = __gvEl();",
+      "  /* 只认酒馆那几个熟面孔: 输入框给能落笔的假元素, 发送键给不吭声的假元素(不替用户按发送) */",
+      "  function __gvPick(s) { s = String(s); if (/send_textarea|send_text|chat_input|mes_text/i.test(s)) return __gvE; if (/send_but|send_button|send_form|rightSendForm/i.test(s)) return __gvBtn; return null; }",
+      "  var __gvDoc = { querySelector: function(s){ return __gvPick(s); },",
+      "    querySelectorAll: function(){ return []; }, getElementById: function(id){ return __gvPick(id); },",
+      "    createElement: function(){ return __gvEl(); }, addEventListener: function(){}, removeEventListener: function(){},",
+      "    body: __gvE, head: __gvE, documentElement: __gvE };",
+      "  function __gvToastFn(){ return function(m){ __gvCall('toast', m); }; }",
+      "  var __gvTH = { insertOrReplaceText: function(t){ __gvCall('setInput', t); }, insertText: function(t){ __gvCall('setInput', t); },",
+      "    replaceText: function(t){ __gvCall('setInput', t); }, triggerSlash: function(c){ __gvCall('triggerSlash', c); },",
+      "    formatAsTavernRegexedString: function(t){ return String(t == null ? '' : t); }, getLastMessageId: function(){ return -1; },",
+      "    getChatMessages: function(){ return []; }, _bind: {} };",
+      "  var __gv$ = function(){ return __gvE; };",
+      "  try {",
+      "    var FAKE = { document: __gvDoc, TavernHelper: __gvTH, triggerSlash: function(c){ __gvCall('triggerSlash', c); },",
+      "      $: __gv$, jQuery: __gv$, console: window.console, Math: Math, JSON: JSON, Date: Date, Array: Array, Object: Object,",
+      "      String: String, Number: Number, RegExp: RegExp, Promise: Promise, setTimeout: window.setTimeout, clearTimeout: window.clearTimeout,",
+      "      setInterval: window.setInterval, clearInterval: window.clearInterval, location: window.location,",
+      "      toastr: { info: __gvToastFn(), success: __gvToastFn(), warning: __gvToastFn(), error: __gvToastFn() },",
+      "      SillyTavern: { getContext: function(){ return { chat: [], characters: [], name1: '', name2: '', setChatInput: function(t){ __gvCall('setInput', t); } }; } },",
+      "      postMessage: function(m, o){ try { __gvRealParent.postMessage(m, o || '*'); } catch (e) {} } };",
+      "    try { window.parent = FAKE; } catch (e) {}",
+      "    if (!window.TavernHelper) { try { window.TavernHelper = __gvTH; } catch (e) {} }",
+      "    if (!window.triggerSlash) { try { window.triggerSlash = FAKE.triggerSlash; } catch (e) {} }",
+      "    if (!window.$) { try { window.$ = __gv$; window.jQuery = __gv$; } catch (e) {} }",
+      "    if (!window.toastr) { try { window.toastr = FAKE.toastr; } catch (e) {} }",
+      "  } catch (e) { console.warn('gv fake parent', e); }",
+      "  }",
       "})();"
     ].join("\n");
 
@@ -117,6 +176,7 @@
       container.innerHTML = richHtml(text, messageId);
     }
     /* ==GV-RICH-END== */
+  /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
 
   /* ---------------- 内置气泡贴纸（随插件走，离线可用） ---------------- */
@@ -1182,6 +1242,23 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
 /* ★ 插件窗口开着没有: 关掉之后预览 iframe 还在跑(打字机/自动播放不会因为 display:none 停),
    它会继续往宿主发 bgm / se -> 于是"我把插件关了它不响了, 一动别的页面它又开始响"。关着的时候一律不理。 */
 let _pvWinOpen = false;
+
+  /* ★ 预览里也一样: 活 iframe 里的卡片点"选项"时发上来 {__gvTH:1, fn:'setInput'|'triggerSlash'}, 我们替它落笔。
+     只在预览窗开着时接 (真机那边由卡里脚本接; 两边用 e.__gvTHDone 保证只执行一次) */
+  window.addEventListener('message', function (e) {
+    const d = e.data; if (!d || d.__gvTH !== 1 || e.__gvTHDone) return;
+    if (!_pvWinOpen) return;
+    e.__gvTHDone = 1;
+    try {
+      if (d.fn === 'setInput') {
+        const ta = document.querySelector('#send_textarea');
+        if (ta) { ta.value = String(d.arg == null ? '' : d.arg); ta.dispatchEvent(new Event('input', { bubbles: true })); try { ta.focus(); } catch (e2) {} }
+      } else if (d.fn === 'triggerSlash') {
+        if (typeof window.triggerSlash === 'function') window.triggerSlash(String(d.arg || ''));
+        else { const ta = document.querySelector('#send_textarea'); if (ta) { ta.value = String(d.arg || ''); ta.dispatchEvent(new Event('input', { bubbles: true })); } }
+      } else if (d.fn === 'toast') { if (typeof toastr !== 'undefined') toastr.info(String(d.arg || '')); }
+    } catch (err) {}
+  });
   function pvVolume() {
     const v = { bgm: 0.8, se: 0.8 };
     try { const s = JSON.parse(localStorage.getItem(PV_VOL_KEY) || 'null');

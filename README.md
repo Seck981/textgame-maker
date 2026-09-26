@@ -197,7 +197,18 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 
 ---
 
-© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.6**
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.7**
+
+**v1.0.7 改了什么**：修好「悬浮窗里的**剧情选项点了没反应**」。根因：悬浮窗模板跑在一个独立源的沙箱 iframe 里，
+选项卡片里那句 `window.parent.document.querySelector('#send_textarea')` 当场抛 `SecurityError`（跨源），脚本整段断掉 ——
+表现就是"点不开"。现在引擎在这种"拿不到上级"的沙箱里装一层**假 parent**：
+`parent.document.querySelector('#send_textarea').value = …`、`parent.triggerSlash(…)`、`TavernHelper.insertOrReplaceText(…)`、
+`toastr`、`SillyTavern.getContext()` 都能用，动作 postMessage 到最外层页面，由卡里的脚本真正落进输入框（不替你按发送）。
+楼层里正常的活 iframe 是同源，一个字节都不动。实测（A/B，同一段选项卡片，真鼠标点击）：旧行为 → `SecurityError`、输入框空；
+现在 → 点选项，输入框里出现选项文字。
+
+> ⚠️ 这一版**必须重新导出一次脚本、并在酒馆助手里重新导入 + 重新绑定**：悬浮窗用的引擎是**导出时内联进脚本**的那一份，
+> 只更新插件（或只换 `public/galgame/` 里的引擎文件）不够。
 
 **v1.0.6 改了什么**：更新「页面排版 → 指导提示词」（给 AI 写模板用的那份说明），跟上前几个版本的行为 ——
 char 楼层写上了气泡的**三档落点**（`bubblePosEach[贴纸名]` → `bubblePosSlot[当前行的 slot]` → `bubblePos`）以及

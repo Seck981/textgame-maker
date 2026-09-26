@@ -1401,6 +1401,29 @@ const obs = new MutationObserver(() => {
 obs.observe(doc.getElementById('chat') || doc.body, { childList: true, subtree: true });
 setInterval(() => { if (enabled) sweep(); }, CONFIG.sweepMs);
 
+/* ★ 活 iframe 里的卡片想"点选项填进输入框"时, 它写的是
+   window.parent.document.querySelector('#send_textarea').value = ... 或 window.parent.triggerSlash(...);
+   但那个 iframe 的 parent 是我们模板所在的沙箱(独立源, 拿不到酒馆) —— 引擎在它里面把 window.parent 换成了假代理,
+   动作 postMessage 到最外层页面(这里)。所以真正的落笔由我们来做: 填进输入框 / 执行斜杠命令。
+   (插件预览那边有一份同样的监听; 两边都用 e.__gvTHDone 标记, 只让一个执行) */
+window.addEventListener('message', function (e) {
+  const d = e.data;
+  if (!d || d.__gvTH !== 1 || e.__gvTHDone) return;
+  if (!enabled) return;                       // 这一楼没开 Galgame: 不接
+  e.__gvTHDone = 1;
+  try {
+    if (d.fn === 'setInput') {
+      const ta = doc.querySelector('#send_textarea') || doc.querySelector('textarea#send_textarea');
+      if (ta) { ta.value = String(d.arg == null ? '' : d.arg); ta.dispatchEvent(new Event('input', { bubbles: true })); try { ta.focus(); } catch (e2) {} }
+    } else if (d.fn === 'triggerSlash') {
+      if (typeof window.triggerSlash === 'function') window.triggerSlash(String(d.arg || ''));
+      else { const ta = doc.querySelector('#send_textarea'); if (ta) { ta.value = String(d.arg || ''); ta.dispatchEvent(new Event('input', { bubbles: true })); } }
+    } else if (d.fn === 'toast') {
+      if (typeof toastr !== 'undefined') toastr.info(String(d.arg || ''));
+    }
+  } catch (err) { console.warn('[gv] 选项动作失败', err); }
+});
+
 (async () => {
   try { await ensureEngine(); await loadCssText(); injectDocCss(); }
   catch (e) { if (typeof toastr !== 'undefined') toastr.error('Galgame 引擎加载失败: ' + e.message); return; }
