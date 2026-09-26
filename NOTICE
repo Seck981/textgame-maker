@@ -21,6 +21,3 @@ This work is licensed under the Creative Commons Attribution-NonCommercial-Share
 第三方库（engine/libs/、engine/fa-inline.css）分别是 Tailwind CSS、highlight.js、Mermaid、
 animate.css、Font Awesome Free，各自遵循其原许可协议（均为 MIT 或同类宽松许可），
 版权归各自作者所有，不受本作品「非商业」条款的额外限制。
-
-本插件与酒馆助手（JS-Slash-Runner）没有隶属关系：插件未包含、也未改写其任何代码，
-只是让导出的 .json 采用它能识别的脚本格式；它自身遵循它自己的许可协议（Aladdin Free Public License）。

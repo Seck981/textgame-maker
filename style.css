@@ -118,7 +118,8 @@
 .tgm-radio { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: inherit; white-space: nowrap; }
 .tgm-radio input { width: 15px; height: 15px; margin: 0; cursor: pointer; accent-color: #ff8fb1; }
 /* 取景 / 定位编辑器 */
-.tgm-frame-dlg { width: min(840px, calc(100% - 32px)); }
+.tgm-frame-dlg { width: min(660px, calc(100% - 32px)); max-height: calc(100vh - 24px); display: flex; flex-direction: column; }   /* ★ 以前 840 太占地方(框本身才 160~360 宽), 收窄一档 */
+.tgm-frame-dlg .tgm-dlg-body { overflow: auto; }   /* ★ 小屏幕上内部滚动: 保证底下的按钮永远点得到 */
 /* ★ 弹窗里的按钮行 + 说明文字以前被 430px 挤爆(角色名那行直接被裁掉): 允许换行, 文字限宽别拉成一条长线 */
 .tgm-frame-dlg .tgm-row { flex-wrap: wrap; }
 .tgm-frame-dlg .tgm-row > .tgm-imeta { white-space: normal; }

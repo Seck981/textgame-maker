@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.3', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.4', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
   /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步
@@ -718,8 +718,11 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
          免得直接把 400x867 这种原尺寸塞进来、把整个浏览器界面占满 */
       const stageAR = (Number(opts.aspect) > 0) ? Number(opts.aspect) : 9 / 19.5;
       /* ★ 弹窗放宽了, 取景画面也能大一点 (以前竖版手机在弹窗里只有 175px 宽, 摆气泡看不清) */
-      const boxMaxW = Math.min(420, Number(opts.maxW) || 420);
-      const boxMaxH = Math.max(240, Math.min(520, (window.innerHeight || 800) - 300));
+      /* ★ 尺寸跟着视口走: 以前固定 min(420, …) 宽 + 最高 520 —— 在 720 高的屏幕上整块弹窗会超出视口, 下面那排按钮点不到。
+         现在整体小一档 + 按可用高度算, 再配合 .tgm-frame-dlg 的 max-height/内部滚动兜底 */
+      const _vh = (window.innerHeight || 800), _vw = (window.innerWidth || 900);
+      const boxMaxW = Math.min(360, Number(opts.maxW) || 360, Math.max(160, Math.round(_vw * 0.72)));
+      const boxMaxH = Math.max(180, Math.min(440, _vh - 360));
       let bw = Math.round(boxMaxW), bh = Math.round(bw / stageAR);
       if (bh > boxMaxH) { bh = boxMaxH; bw = Math.max(60, Math.round(bh * stageAR)); }
       stage.style.width = bw + 'px';
