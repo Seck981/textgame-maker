@@ -197,7 +197,11 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 
 ---
 
-© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.9**
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.10**
+
+**v1.0.10 改了什么**：悬浮窗那层「指导提示词」跟上 v1.0.9 的新规则 —— 引擎现在是按**「上级里有没有 `#send_textarea`」**决定要不要给活 iframe 接管 parent 的，
+所以提示词里写明：**面板模板里别放 `id="send_textarea"` 的元素**（放了引擎会以为上级就是酒馆页面、不接管，卡片点选项又变成"一点反应都没有"，
+就是 v1.0.9 修的那个坑）。同一条「活 iframe 是黑盒」的规则（别清洗 / 重写 / 再包一层、别加 `sandbox` / `pointer-events: none` / 别截点击）也一并留着。
 
 **v1.0.9 改了什么**：v1.0.7 那个"假 parent"**判断条件错了**，悬浮窗里的选项**还是点不动** —— 这次把探针注进沙箱、拿到真实行为才查明白：
 悬浮窗里那个活 iframe 的 `window.parent` **是能读的（同源）**，可它是**面板模板**，里面既没有 `#send_textarea`、也没有 `triggerSlash`。
