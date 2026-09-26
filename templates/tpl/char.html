@@ -1,0 +1,48 @@
+<!-- 卡里那套楼层界面 (引擎 create() 的原样移植) -->
+<div class="gv-root gv-inline">
+  <div class="gv-phone" id="phone">
+    <div class="gv-bgs"><div class="gv-bg" id="bgA"></div><div class="gv-bg" id="bgB"></div></div>
+    <div class="gv-vignette"></div>
+    <div class="gv-dim" id="dim"></div>
+    <div class="gv-flash" id="flash"></div>
+    <div class="gv-stage" id="stage"></div>
+    <div class="gv-ui">
+      <div class="gv-box" id="box">
+        <img class="gv-uava" id="uava" alt="">
+        <div class="gv-name" id="name"></div>
+        <p class="gv-text" id="text"><span class="gv-caret" id="caret"></span></p>
+        <div class="gv-next" id="next">▼</div>
+      </div>
+      <div class="gv-hud">
+        <div class="gv-dots" id="dots"></div>
+        <div class="gv-btns"><div class="gv-btn" id="auto">自动</div><div class="gv-btn" id="replay">重播</div></div>
+      </div>
+    </div>
+    <div class="gv-sticker" id="sticker"><img id="stickerImg" alt=""></div>
+    <div class="gv-toolbar">
+      <span class="gv-tb gv-big" id="btnEdit" title="操作菜单">编辑</span>
+      <div class="gv-popup" id="popup">
+        <span class="gv-tb gv-primary" data-a="edit" title="编辑这一楼的原文">编辑</span>
+        <span class="gv-tb" data-a="copy" title="复制这一楼内容">复制</span>
+        <span class="gv-tb" data-a="up" title="楼层上移">上移楼层</span>
+        <span class="gv-tb" data-a="down" title="楼层下移">下移楼层</span>
+        <span class="gv-tb gv-toggle" data-a="toggle-user-avatar" id="btnUa" title="对话轮到TA说话时显示TA的头像">显示头像</span>
+        <!--gv-audio--><span class="gv-tb" data-a="volume" id="btnVol" title="调整 BGM / 音效 的音量">调整音量</span><!--/gv-audio-->
+        <span class="gv-tb gv-danger" data-a="delete" title="删除这一楼">删除楼层</span>
+      </div>
+    </div>
+    <!--gv-audio--><div class="gv-vol" id="vol">
+      <div class="gv-vol-row"><span class="gv-vol-lb">音频</span><input class="gv-vol-rng" id="volBgm" type="range" min="0" max="100" step="1"><span class="gv-vol-pc" id="volBgmPc">80%</span></div>
+      <div class="gv-vol-row"><span class="gv-vol-lb">音效</span><input class="gv-vol-rng" id="volSe" type="range" min="0" max="100" step="1"><span class="gv-vol-pc" id="volSePc">80%</span></div>
+      <div class="gv-vol-row"><span class="gv-vol-lb">进度</span><input class="gv-vol-rng" id="volPos" type="range" min="0" max="1000" step="1" value="0"><span class="gv-vol-pc" id="volPosPc">0:00</span><span class="gv-vol-btn" id="volReplay">重播</span></div>
+      <div class="gv-vol-tip">拖到 0 就是静音；音量记在这台设备上；进度条跟着 BGM 走</div>
+    </div><!--/gv-audio-->
+    <div class="gv-editor" id="editor">
+      <textarea class="gv-editor-ta" id="ta"></textarea>
+      <div class="gv-editor-btns">
+        <span class="gv-tb gv-primary" id="bSave">确认修改</span>
+        <span class="gv-tb" id="bCancel">退出修改</span>
+      </div>
+    </div>
+  </div>
+</div>

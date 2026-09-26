@@ -1,0 +1,23 @@
+<!-- 卡里那套悬浮窗 (引擎 createPanel 的移植) + 自带三个页面(词/转/包), 不依赖宿主 -->
+<div class="gv-panel" id="panel">
+  <div class="gv-panel-head" id="head">
+    <span class="gv-panel-title">楼层附加内容</span>
+    <span class="gv-panel-count" id="count">0</span>
+    <span class="gv-panel-spacer"></span>
+    <span class="gv-panel-btn" id="btnRaw" title="渲染 / 源码">Aa</span>
+    <span class="gv-panel-btn" id="btnPrompt" title="格式提示词（发给 AI 的）">词</span>
+    <span class="gv-panel-btn" id="btnPack" title="素：导入高清素材包 (.zip) / 清除浏览器素材缓存">素</span>
+    <span class="gv-panel-btn" id="btnConv" title="兜底转换 API 设置">转</span>
+    <span class="gv-panel-btn" id="btnRedraw" title="重绘">↻</span>
+    <span class="gv-panel-btn" id="btnFold" title="收成小球">–</span>
+    <span class="gv-panel-btn" id="btnMini" title="关闭悬浮窗">✕</span>
+  </div>
+  <div class="gv-panel-body" id="body"></div>
+
+  <!-- 三个内嵌页面: 自己在模板里画, 没有宿主也能开 -->
+  <div class="gv-sheet" id="sheet">
+    <div class="gv-sheet-head"><span id="sheetTitle">页面</span><span class="gv-sheet-x" id="sheetX">✕</span></div>
+    <div class="gv-sheet-body" id="sheetBody"></div>
+    <div class="gv-sheet-foot" id="sheetFoot"></div>
+  </div>
+</div>

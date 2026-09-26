@@ -1,0 +1,28 @@
+/* ============================================================
+   横版覆盖（版式 = 横版 · 设计宽 640 · 640×360）
+   这一份是【追加在竖版 CSS 后面】的覆盖层：
+   手机框比例、立绘高度、对话框、音量面板、贴纸大小 换成横屏那种galgame 布局，
+   其余（背景铺满、演出动画、编辑器、气泡、HUD）沿用竖版那一套。
+   ============================================================ */
+.gv-phone {
+  width: min(100%, 640px);
+  aspect-ratio: 16 / 9;
+  max-height: none;
+  border-radius: 14px;
+}
+/* 立绘: 横屏时别顶到顶, 留一点天花板 (画了占位框的话, 以框的高度为准) */
+.gv-sprite { height: var(--gv-h, 94%); }
+/* 对话框: 横屏做成"底部一条" —— 别占满整屏, 文字也小一号 */
+.gv-ui { padding: 0 12px 10px; }
+.gv-box { min-height: 0; border-radius: 12px; padding: 12px 14px 13px; }
+.gv-text { font-size: 14.5px; line-height: 1.62; min-height: 3em; }
+.gv-name { font-size: 13px; top: -12px; padding: 3px 12px; }
+.gv-uava { width: 36px; height: 36px; top: -11px; border-radius: 10px; }
+/* 音量面板: 横屏上下更矮, 所以往中间收一点 */
+.gv-vol { top: 6%; left: 18%; right: 18%; }
+/* 气泡贴纸: 屏幕矮, 30% 太大 */
+.gv-sticker { width: 17%; }
+.gv-bubble { font-size: 26px; }
+/* 提示条 / HUD 的位置微调 */
+.gv-tpl-toast { bottom: 10px; font-size: 11.5px; }
+.gv-hud { padding: 6px 6px 2px; }

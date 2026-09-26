@@ -1,0 +1,233 @@
+/* 文字游戏页面制作器 —— 界面样式 */
+/* ★ 顶部图标: 尺寸 / 内边距 / 字号 全部交给酒馆自己的 .drawer-icon 规则 (font-size: var(--topBarIconSize)),
+   fa-fw 给固定宽度 —— 这里【什么都不要覆盖】, 覆盖了就会跟旁边那一排不一样大。
+   颜色同理: 字体图标走 currentColor, 自动跟酒馆的美化/主题。 */
+#tgm-topbtn { cursor: pointer; }
+#tgm-topbtn .tgm-dot { display: none; }   /* 老的 emoji 写法留着也不会露出来 */
+
+/* ★ 不能用 inset:0 —— 手机端(和装了 mobile/phone 扩展时) <html> 上带 transform,
+   一旦祖先有 transform, position:fixed 的包含块就变成那个祖先(高度可能是 0), 弹窗会整块高度归零看不见。
+   vw/vh 是【视口单位】, 不受包含块影响, 所以这里用显式宽高。 */
+#tgm-mask { position: fixed; top: 0; left: 0; right: auto; bottom: auto; width: 100vw; height: 100vh;
+  z-index: 2147483000; background: rgba(4,6,11,.72);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 24px; }
+#tgm-mask.tgm-hide { display: none; }
+#tgm-app { width: min(1080px, 100%); height: min(760px, 100%); display: flex; flex-direction: column;
+  border-radius: 14px; overflow: hidden; background: #12151f; color: #e6e9f2;
+  border: 1px solid rgba(255,255,255,.14); box-shadow: 0 24px 70px rgba(0,0,0,.7);
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; font-size: 13px; }
+.tgm-head { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; padding: 11px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
+  border-bottom: 1px solid rgba(255,255,255,.1); }
+.tgm-title { font-weight: 700; font-size: 14px; letter-spacing: .3px; }
+.tgm-ver { font-size: 11px; opacity: .45; }
+.tgm-spacer { flex: 1; }
+.tgm-x { cursor: pointer; width: 24px; height: 24px; line-height: 24px; text-align: center;
+  border-radius: 6px; background: rgba(255,255,255,.09); }
+.tgm-x:hover { background: rgba(255,80,80,.75); }
+.tgm-body { flex: 1 1 auto; display: flex; min-height: 0; }
+.tgm-nav { flex: 0 0 156px; padding: 10px 8px; display: flex; flex-direction: column; gap: 3px;
+  border-right: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.02); overflow: auto; }
+.tgm-nav-item { padding: 8px 11px; border-radius: 8px; cursor: pointer; opacity: .78; white-space: nowrap; }
+.tgm-nav-item:hover { background: rgba(255,255,255,.07); opacity: 1; }
+.tgm-nav-item.tgm-on { background: rgba(255,143,177,.2); color: #ffb3cb; opacity: 1; font-weight: 600; }
+.tgm-nav-sep { height: 1px; background: rgba(255,255,255,.09); margin: 7px 4px; }
+.tgm-main { flex: 1 1 auto; min-width: 0; overflow: auto; padding: 14px 16px 20px; }
+.tgm-pane { display: none; }
+.tgm-pane.tgm-on { display: block; }
+.tgm-h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+.tgm-hint { font-size: 12px; line-height: 1.6; opacity: .55; margin: 0 0 12px; }
+.tgm-card { border: 1px solid rgba(255,255,255,.11); border-radius: 10px; padding: 12px;
+  background: rgba(255,255,255,.035); margin-bottom: 12px; }
+.tgm-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tgm-row > label { flex: 0 0 84px; opacity: .7; font-size: 12px; }
+.tgm-in, .tgm-sel, .tgm-ta { width: 100%; box-sizing: border-box; background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.16); border-radius: 8px; color: #e6e9f2; font-family: inherit;
+  font-size: 12.5px; padding: 7px 9px; outline: none; }
+.tgm-in:focus, .tgm-sel:focus, .tgm-ta:focus { border-color: #ff8fb1; }
+.tgm-ta { min-height: 300px; resize: vertical; font-family: Consolas, "Courier New", monospace;
+  font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.tgm-sel option { background: #12151f; }
+/* ★ 页面排版那行「恢复默认用：」的两个下拉: 原生 select 别被 width:100% 拉满, 标签也别折行 */
+.tgm-row > select.tgm-sel { flex: 0 0 auto; width: auto; max-width: 260px; min-width: 140px; }
+.tgm-row > .tgm-imeta { white-space: nowrap; }
+/* ★ 占位排版: 画框舞台 */
+.tgm-boxshow { position: absolute; border: 2px dashed rgba(255,143,177,.95); background: rgba(255,143,177,.07); border-radius: 6px; pointer-events: none; z-index: 30; }
+.tgm-boxstage { position: relative; margin: 8px auto 6px; border: 1px solid rgba(255,255,255,.18); border-radius: 10px; overflow: hidden; background: #0b0d14; touch-action: none; }
+.tgm-boxstage .tgm-boxbd { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
+.tgm-boxrect { position: absolute; border: 2px dashed #ff8fb1; background: rgba(255,143,177,.12); border-radius: 6px; cursor: move; }
+.tgm-boxlabel { position: absolute; left: 0; top: 0; font-size: 10px; padding: 1px 6px; border-radius: 0 0 6px 0; color: #10121a; font-weight: 700; }
+.tgm-boxhandle { position: absolute; right: -5px; bottom: -5px; width: 12px; height: 12px; background: #fff; border: 2px solid #ff8fb1; border-radius: 3px; cursor: nwse-resize; }
+/* ★ 8 个把手: 四条边(贴在框内侧, 不会被舞台的 overflow 裁掉) + 四个角(在框外角上, 跟原来那个一样) */
+.tgm-boxhandle.tgm-bh-n, .tgm-boxhandle.tgm-bh-s { right: auto; bottom: auto; left: 50%; margin-left: -8px; width: 16px; height: 8px; border-radius: 3px; }
+.tgm-boxhandle.tgm-bh-w, .tgm-boxhandle.tgm-bh-e { right: auto; bottom: auto; top: 50%; margin-top: -8px; width: 8px; height: 16px; border-radius: 3px; }
+.tgm-boxhandle.tgm-bh-n { top: 0; cursor: ns-resize; }
+.tgm-boxhandle.tgm-bh-s { top: auto; bottom: 0; cursor: ns-resize; }
+.tgm-boxhandle.tgm-bh-w { left: 0; cursor: ew-resize; }
+.tgm-boxhandle.tgm-bh-e { left: auto; right: 0; cursor: ew-resize; }
+.tgm-boxhandle.tgm-bh-nw { left: -5px; right: auto; top: -5px; bottom: auto; cursor: nwse-resize; }
+.tgm-boxhandle.tgm-bh-ne { right: -5px; left: auto; top: -5px; bottom: auto; cursor: nesw-resize; }
+.tgm-boxhandle.tgm-bh-sw { left: -5px; right: auto; bottom: -5px; top: auto; cursor: nesw-resize; }
+.tgm-boxhandle.tgm-bh-se { right: -5px; left: auto; bottom: -5px; top: auto; cursor: nwse-resize; }
+.tgm-btn { cursor: pointer; padding: 6px 14px; border-radius: 8px; font-size: 12.5px;
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.15); white-space: nowrap; }
+.tgm-btn:hover { background: rgba(255,255,255,.2); }
+.tgm-btn.tgm-primary { background: #ff8fb1; border-color: #ff8fb1; color: #14161f; font-weight: 700; }
+.tgm-btn.tgm-primary:hover { background: #ffa6c2; }
+.tgm-btn.tgm-danger:hover { background: rgba(255,80,80,.8); color: #fff; }
+.tgm-list { display: flex; flex-direction: column; gap: 7px; }
+.tgm-item { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 9px;
+  border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); cursor: pointer; }
+.tgm-item:hover { background: rgba(255,255,255,.07); }
+.tgm-item.tgm-on { border-color: #ff8fb1; background: rgba(255,143,177,.14); }
+.tgm-item .tgm-iname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tgm-item .tgm-imeta { font-size: 11px; opacity: .45; }
+.tgm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 9px; }
+.tgm-thumb { border: 1px solid rgba(255,255,255,.1); border-radius: 9px; padding: 7px; text-align: center;
+  background: repeating-conic-gradient(#2a2f3d 0% 25%, #232833 0% 50%) 50%/14px 14px; }
+.tgm-thumb img { width: 100%; height: 74px; object-fit: contain; display: block; }
+.tgm-thumb .tgm-tname { font-size: 11px; margin-top: 5px; opacity: .75; }
+.tgm-todo { border: 1px dashed rgba(255,255,255,.22); border-radius: 10px; padding: 22px;
+  text-align: center; opacity: .5; font-size: 12.5px; line-height: 1.8; }
+.tgm-status { font-size: 12px; color: #a6f0c6; min-height: 16px; }
+.tgm-dlg-mask { position: fixed; top: 0; left: 0; right: auto; bottom: auto; width: 100vw; height: 100vh;   /* ★ 同上: 不能用 inset:0 */
+  z-index: 2147483600; background: rgba(3,4,8,.62);
+  display: flex; align-items: center; justify-content: center; }
+.tgm-dlg { width: min(380px, calc(100% - 40px)); border-radius: 12px; overflow: hidden;
+  background: #171a26; border: 1px solid rgba(255,255,255,.16); box-shadow: 0 18px 50px rgba(0,0,0,.7);
+  color: #e6e9f2; font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 13px; }
+.tgm-dlg-head { padding: 11px 14px; font-weight: 700; font-size: 13.5px;
+  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.02));
+  border-bottom: 1px solid rgba(255,255,255,.1); }
+.tgm-dlg-body { padding: 13px 14px; display: flex; flex-direction: column; gap: 9px; }
+.tgm-dlg-text { font-size: 12.5px; line-height: 1.65; opacity: .72; }
+.tgm-dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 14px;
+  border-top: 1px solid rgba(255,255,255,.09); }
+/* P2 素材页 */
+.tgm-spacer { flex: 1; }
+.tgm-bgthumb img { height: 96px; }
+.tgm-thumb { position: relative; }
+.tgm-thumb-ops { display: flex; gap: 3px; justify-content: center; margin-top: 5px; flex-wrap: wrap; }
+.tgm-thumb-ops .tgm-btn { padding: 2px 7px; font-size: 10.5px; }
+.tgm-thumb.tgm-anchor { border-color: #ff8fb1; box-shadow: 0 0 0 1px #ff8fb1 inset; }
+.tgm-group { border: 1px solid rgba(255,255,255,.11); border-radius: 10px; padding: 10px; margin-top: 10px;
+  background: rgba(255,255,255,.025); }
+.tgm-gname { font-weight: 700; font-size: 13px; }
+.tgm-range { flex: 1; accent-color: #ff8fb1; }
+/* 单选圆框 (恢复默认用: 有音频 / 无音频) —— 点一下圆框里填色, 不再用按钮表示选中 */
+.tgm-radio { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; color: inherit; white-space: nowrap; }
+.tgm-radio input { width: 15px; height: 15px; margin: 0; cursor: pointer; accent-color: #ff8fb1; }
+/* 取景 / 定位编辑器 */
+.tgm-frame-dlg { width: min(840px, calc(100% - 32px)); }
+/* ★ 弹窗里的按钮行 + 说明文字以前被 430px 挤爆(角色名那行直接被裁掉): 允许换行, 文字限宽别拉成一条长线 */
+.tgm-frame-dlg .tgm-row { flex-wrap: wrap; }
+.tgm-frame-dlg .tgm-row > .tgm-imeta { white-space: normal; }
+.tgm-frame-dlg .tgm-dlg-text { max-width: 640px; margin: 0 auto; }
+.tgm-frame { position: relative; width: 100%; max-width: 210px; margin: 0 auto; overflow: hidden;
+  border-radius: 14px; border: 1px solid rgba(255,255,255,.18); background: #0b0d14;
+  cursor: grab; touch-action: none; }
+.tgm-frame:active { cursor: grabbing; }
+.tgm-frame-img { width: 100%; height: 100%; display: block; object-fit: cover;
+  object-position: 50% 50%; transform-origin: center center; user-select: none; -webkit-user-drag: none; }
+/* 站位编辑器 */
+.tgm-slotstage { background: #0b0d14; }
+.tgm-slotmark { position: absolute; width: 34%; height: 62%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  cursor: grab; touch-action: none; border-radius: 8px; border: 1px dashed rgba(255,255,255,.35); }
+.tgm-slotmark:active { cursor: grabbing; }
+.tgm-slotmark.tgm-sel { border: 1px solid #ff8fb1; box-shadow: 0 0 0 1px #ff8fb1 inset; background: rgba(255,143,177,.12); }
+.tgm-slotmark img { width: 100%; flex: 1; object-fit: contain; pointer-events: none; }
+.tgm-slotlabel { font-size: 10px; opacity: .8; padding: 1px 5px; background: rgba(0,0,0,.5); border-radius: 5px; margin-bottom: 3px; }
+.tgm-warn { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; padding: 9px 12px; margin-bottom: 10px;
+  border-radius: 9px; font-size: 12px; background: rgba(255,200,90,.14); border: 1px solid rgba(255,200,90,.4); color: #ffd88a; }
+.tgm-chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+.tgm-preview { margin-top: 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px;
+  background: repeating-conic-gradient(#1b1f2a 0% 25%, #161a23 0% 50%) 50%/16px 16px; }
+.tgm-preview-frame { width: 100%; max-width: 700px; margin: 0 auto; border: 0; display: block; height: 460px; background: transparent; overflow: hidden; }
+.tgm-preview-frame::-webkit-scrollbar { display: none; }
+/* 预览区给足地方, 里面的东西居中显示 */
+.tgm-preview { min-height: 640px; display: flex; align-items: center; justify-content: center; }
+.tgm-preview-frame.tgm-fill { max-width: none; width: 100%; height: 640px !important; }
+.tgm-logs { margin-top: 8px; max-height: 120px; overflow: auto; font-family: Consolas, monospace; font-size: 11.5px; }
+.tgm-logwarn { color: #ffd479; }
+.tgm-log { padding: 2px 6px; opacity: .7; }
+.tgm-logerr { color: #ff9b9b; opacity: 1; }
+
+/* 立绘取景: 图片按原始比例显示 (和引擎里 height:100%; width:auto 的渲染一致)
+   —— 之前用 cover 会把图片先裁成框的形状, 于是"缩小"只是在缩小那张被裁过的图,
+   永远看不到两边被裁掉的部分 */
+.tgm-frame.tgm-sprite .tgm-frame-img { width: auto; height: 100%; margin: 0 auto; object-fit: contain; }
+
+/* 取景框里的图片: 尺寸由 JS 按原图比例算 (见 frameEditor.layoutImg), 这里只负责居中;
+   不再用 object-fit: cover —— cover 会先把图裁成框的形状, 缩小就永远看不到两边 */
+.tgm-frame .tgm-frame-img { position: absolute; inset: 0; margin: auto;
+  width: auto; height: auto; object-fit: fill; transform-origin: center center; }
+
+/* 取景框里的"站位框"模拟: 和 .gv-sprite 一样的定位/缩放方式 */
+.tgm-frame .tgm-slotsim { position: absolute; height: 100%; }
+
+/* ★ 取景框里的图片改成 flex 子元素: 浏览器对"绝对定位 + margin:auto"的 <img> 不会居中
+   (实测 Chrome 给的是 margin-left:0 / margin-right:-196px), 所以用 flex 来居中/底对齐,
+   和引擎的 .gv-sprite (display:flex; align-items:flex-end; justify-content:center) 完全一致 */
+.tgm-frame .tgm-slotsim { position: absolute; height: 100%; display: flex; justify-content: center; }
+.tgm-frame .tgm-frame-img { position: static; inset: auto; margin: 0; width: auto; height: auto;
+  object-fit: fill; transform-origin: center center; }
+
+/* ★ 气泡位置编辑器: 底下垫【真实背景 + 真实立绘】(站位/取景和渲染一致), 气泡按引擎规则摆:
+   left/top = 气泡【中心点】的百分比, 宽度 30% —— 和 galgame.css 里 .gv-sticker 那三行一模一样 */
+.tgm-frame .tgm-frame-bd { position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 50%; pointer-events: none; }
+.tgm-frame .tgm-frame-pt { position: absolute; width: 30%; transform-origin: 50% 50%; pointer-events: none; z-index: 3; }
+.tgm-frame .tgm-frame-pt img { width: 100%; display: block; }
+/* ★ 「默认」那一项不是贴纸: 虚线占位框 + 正方形, 一眼看出跟贴纸不是一回事 */
+.tgm-frame .tgm-frame-pt.tgm-frame-pt-def { border: 2px dashed rgba(255,143,177,.9); border-radius: 8px; background: rgba(255,143,177,.10); aspect-ratio: 1 / 1; }
+
+/* ============================================================
+   ★ 手机端排版 (窄屏自适应)
+   手机上没有横向空间放左边的竖排导航 -> 导航变横向可滑动的标签条,
+   整个窗口铺满屏幕, 按钮/输入框换行, 预览框缩短 (楼层的自适应缩放由模板自己算 --gv-scale)。
+   ============================================================ */
+@media (max-width: 760px) {
+  #tgm-mask { padding: 0; align-items: stretch; justify-content: stretch; }
+  #tgm-app { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; }
+  .tgm-head { padding: 9px 10px; gap: 6px; }
+  .tgm-title { font-size: 13px; }
+  .tgm-ver { display: none; }
+  .tgm-x { width: 30px; height: 30px; line-height: 30px; font-size: 15px; }
+  .tgm-body { flex-direction: column; }
+  .tgm-nav { flex: 0 0 auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 6px;
+    padding: 8px 8px 6px; border-right: 0; border-bottom: 1px solid rgba(255,255,255,.09);
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .tgm-nav::-webkit-scrollbar { height: 0; display: none; }
+  .tgm-nav-item { flex: 0 0 auto; padding: 7px 11px; font-size: 12.5px; white-space: nowrap; border-radius: 999px; }
+  .tgm-nav-sep { display: none; }
+  .tgm-main { padding: 10px 10px 18px; }
+  .tgm-card { padding: 10px; border-radius: 9px; }
+  .tgm-h2 { font-size: 14px; }
+  .tgm-hint { font-size: 11.5px; }
+  .tgm-row { flex-wrap: wrap; gap: 6px; }
+  .tgm-row > label { flex: 0 0 auto; font-size: 11.5px; }
+  .tgm-row > select.tgm-sel { max-width: none; min-width: 0; width: 100%; }
+  .tgm-btn { padding: 7px 11px; font-size: 12.5px; }
+  .tgm-ta { min-height: 190px; font-size: 12px; }
+  .tgm-in, .tgm-sel, .tgm-ta { font-size: 13px; }        /* ≥13px, 手机上点输入框不会自动放大 */
+  .tgm-preview { min-height: 300px; padding: 6px; margin-top: 8px; }
+  .tgm-preview-frame { height: 320px; }
+  .tgm-preview-frame.tgm-fill { height: 380px !important; }
+  .tgm-logs { max-height: 90px; font-size: 11px; }
+  .tgm-todo { padding: 12px; font-size: 11.5px; }
+  .tgm-dlg-mask { padding: 8px; align-items: flex-end; }
+  .tgm-dlg { width: 100% !important; max-width: none !important; max-height: 92%; }
+  .tgm-frame-dlg { width: 100% !important; }
+  .tgm-dlg-body { padding: 10px; gap: 7px; }
+  .tgm-dlg-text { font-size: 12px; }
+  .tgm-boxstage { margin: 6px auto; }
+}
+@media (max-width: 420px) {
+  .tgm-nav-item { padding: 6px 9px; font-size: 12px; }
+  .tgm-main { padding: 8px 8px 16px; }
+  .tgm-preview-frame { height: 280px; }
+  .tgm-preview-frame.tgm-fill { height: 320px !important; }
+}
+

@@ -1,0 +1,33 @@
+# 依赖 / 构建产物
+node_modules/
+dist/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 临时探针 / 调试文件 (本项目的 tools 目录里带下划线的是本地探针)
+_*.mjs
+_*.js
+_*.sh
+_*.txt
+_*.json
+_*.png
+.tmpcheck/
+.chrome-cdp/
+*.mp4
+
+# 本地环境 / 编辑器
+.env
+.env.*
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 角色卡 / 聊天记录 / 素材包 —— 绝对不要提交
+*.png.bak
+cards/
+chats/
+backup/
+*.酒馆助手脚本.json
+*.zip

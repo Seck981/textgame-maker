@@ -1,0 +1,371 @@
+/* ============================================================
+   酒馆 Galgame 楼层界面 — 样式
+   全部类名以 gv- 前缀隔离
+   ============================================================ */
+.gv-root, .gv-root * { box-sizing: border-box; }
+.gv-root {
+  --gv-accent: #ff8fb1;
+  --gv-panel: rgba(16, 18, 28, 0.82);
+  --gv-text: #f2f3f7;
+  display: flex; justify-content: center;
+  margin: 0;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ---------- 手机外框 ---------- */
+.gv-phone {
+  position: relative;
+  width: min(100%, 400px);
+  aspect-ratio: 9 / 19.5;
+  max-height: 86vh;
+  border-radius: 26px; overflow: hidden;
+  background: #05060a;
+  box-shadow: 0 10px 34px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.10) inset;
+  isolation: isolate; cursor: pointer;
+}
+/* 顶部那个"灵动岛"黑药丸已去掉 */
+
+/* ---------- 背景 ---------- */
+.gv-bgs { position: absolute; inset: 0; z-index: 1; }
+.gv-bg {
+  position: absolute; inset: 0; background-size: cover; background-position: center;
+  opacity: 0; transition: opacity .7s ease; transform: scale(1.04);
+}
+.gv-bg.gv-on { opacity: 1; }
+.gv-vignette {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    radial-gradient(120% 70% at 50% 0%, transparent 40%, rgba(0,0,0,.35) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,.18) 0%, transparent 22%, transparent 55%, rgba(0,0,0,.55) 100%);
+}
+.gv-dim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: #000; opacity: 0; transition: opacity .45s ease; }
+.gv-dim.gv-on { opacity: .62; }
+.gv-flash { position: absolute; inset: 0; z-index: 30; pointer-events: none; background: #fff; opacity: 0; }
+.gv-flash.gv-go { animation: gv-flash .5s ease; }
+@keyframes gv-flash { 0%{opacity:.9} 100%{opacity:0} }
+
+/* ---------- 立绘 ---------- */
+/* ---------- 立绘: 一个站位一张, 支持多角色同框 ---------- */
+.gv-stage { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.gv-sprite {
+  position: absolute; left: var(--gv-x, 50%);
+  bottom: calc((100 - var(--gv-y, 100)) * 1%);
+  width: var(--gv-w, 100%); height: 100%;
+  transform: translateX(-50%) scale(var(--gv-s, 1));
+  transform-origin: 50% 100%; transition: filter .35s ease, opacity .35s ease;
+  display: flex; align-items: flex-end; justify-content: center;   /* 图比框宽时也要居中, 不能偏到一边 */
+}
+.gv-sprite img {
+  height: 100%; width: auto; max-width: none; display: block;
+  object-fit: contain; object-position: bottom center;
+  filter: saturate(1.04) contrast(1.02);
+}
+/* 多角色同框: 不是当前说话者的那张淡下去 */
+.gv-sprite.gv-idle { opacity: .55; filter: brightness(.8) saturate(.85); }
+/* ★ 演出动画必须在每一帧都带上 translateX(-50%) + scale(var(--gv-s)),
+   否则动画会覆盖掉立绘的定位 transform —— 立绘就会"闪到天边去" */
+.gv-sprite.gv-shake { animation: gv-shake .45s ease; }
+@keyframes gv-shake {
+  0%,100%{transform:translateX(-50%) translateX(0) scale(var(--gv-s,1))}
+  20%{transform:translateX(-50%) translateX(-4px) scale(var(--gv-s,1))}
+  45%{transform:translateX(-50%) translateX(4px)  scale(var(--gv-s,1))}
+  70%{transform:translateX(-50%) translateX(-2px) scale(var(--gv-s,1))}
+}
+.gv-sprite.gv-jump { animation: gv-jump .5s ease; }
+@keyframes gv-jump {
+  0%{transform:translateX(-50%) translateY(0) scale(var(--gv-s,1))}
+  35%{transform:translateX(-50%) translateY(-10px) scale(var(--gv-s,1))}
+  65%{transform:translateX(-50%) translateY(0) scale(var(--gv-s,1))}
+  82%{transform:translateX(-50%) translateY(-4px) scale(var(--gv-s,1))}
+  100%{transform:translateX(-50%) translateY(0) scale(var(--gv-s,1))}
+}
+/* 呼吸式缩放: 放大一点点 -> 缩小一点点 -> 回位 (幅度很小, 不闪不飞) */
+.gv-sprite.gv-zoom { animation: gv-zoom .9s ease-in-out; }
+@keyframes gv-zoom {
+  0%   { transform: translateX(-50%) scale(var(--gv-s,1)); }
+  30%  { transform: translateX(-50%) scale(calc(var(--gv-s,1) * 1.045)); }
+  60%  { transform: translateX(-50%) scale(calc(var(--gv-s,1) * 0.985)); }
+  100% { transform: translateX(-50%) scale(var(--gv-s,1)); }
+}
+.gv-sprite.gv-dim { filter: brightness(.45) saturate(.6); }
+.gv-bubble {
+  position: absolute; top: 6%; right: 6%; z-index: 8; font-size: 30px; line-height: 1;
+  animation: gv-bubble 1.5s ease forwards; filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));
+}
+@keyframes gv-bubble {
+  0%{opacity:0; transform: translateY(14px) scale(.5)}
+  25%{opacity:1; transform: translateY(0) scale(1.15)}
+  40%{transform: translateY(0) scale(1)}
+  80%{opacity:1} 100%{opacity:0; transform: translateY(-16px) scale(1)}
+}
+
+/* ---------- 对话框 ---------- */
+.gv-ui { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; padding: 0 8px 8px; }
+.gv-box {
+  position: relative; min-height: 30%; border-radius: 16px;
+  background: var(--gv-panel);
+  backdrop-filter: blur(9px) saturate(1.2); -webkit-backdrop-filter: blur(9px) saturate(1.2);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 -4px 24px rgba(0,0,0,.4);
+  padding: 16px 15px 18px;
+}
+.gv-box.gv-has-uava { padding-left: 15px; }   /* 头像在右上角, 不再挤占文字 */
+.gv-uava {
+  position: absolute; top: -13px; right: 12px; left: auto; bottom: auto;
+  width: 42px; height: 42px; border-radius: 11px; object-fit: cover;
+  border: 1px solid rgba(255,255,255,.32); box-shadow: 0 3px 12px rgba(0,0,0,.5);
+  background: #222;
+}
+.gv-name {
+  position: absolute; top: -13px; left: 14px;
+  padding: 3px 14px; border-radius: 999px;
+  font-size: 14px; font-weight: 700; letter-spacing: .5px; color: #10121a;
+  background: linear-gradient(135deg, #fff, var(--gv-accent));
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+  white-space: nowrap; max-width: 70%; overflow: hidden; text-overflow: ellipsis;
+}
+.gv-name.gv-narr { background: linear-gradient(135deg,#dfe3ee,#8e97ad); }
+.gv-name.gv-user { background: linear-gradient(135deg,#fff,#7fd1ff); }
+.gv-text {
+  margin: 6px 0 0; color: var(--gv-text);
+  font-size: 16px; line-height: 1.72; letter-spacing: .3px;
+  min-height: 4.5em; white-space: pre-wrap; word-break: break-word;
+  text-shadow: 0 1px 3px rgba(0,0,0,.6);
+}
+.gv-text.gv-narr { font-style: italic; color: #c9ccdb; }
+.gv-caret {
+  display: inline-block; width: .55em; height: 1em; vertical-align: -2px;
+  background: var(--gv-accent); opacity: 0; margin-left: 2px;
+  animation: gv-caret 1s steps(1) infinite;
+}
+.gv-caret.gv-on { opacity: .9; }
+@keyframes gv-caret { 50% { opacity: 0 } }
+
+.gv-hud { display: flex; align-items: center; justify-content: space-between; padding: 8px 6px 2px; color: rgba(255,255,255,.72); font-size: 12px; }
+.gv-dots { display: flex; gap: 4px; align-items: center; }
+.gv-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.28); }
+.gv-dot.gv-on { background: var(--gv-accent); transform: scale(1.5); }
+.gv-btns { display: flex; gap: 6px; }
+.gv-btn {
+  cursor: pointer; padding: 3px 10px; border-radius: 999px;
+  background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16);
+  color: rgba(255,255,255,.85); font-size: 11px; transition: background .2s, transform .1s;
+}
+.gv-btn:hover { background: rgba(255,255,255,.2); }
+.gv-btn:active { transform: scale(.94); }
+.gv-btn.gv-active { background: var(--gv-accent); color: #10121a; font-weight: 700; }
+.gv-next {
+  position: absolute; right: 14px; bottom: 8px; color: var(--gv-accent);
+  font-size: 13px; animation: gv-bob 1.1s ease-in-out infinite;
+}
+@keyframes gv-bob { 0%,100%{transform:translateY(0); opacity:.5} 50%{transform:translateY(4px); opacity:1} }
+
+/* 隐藏酒馆原生楼层正文 */
+.gv-hide { display: none !important; }
+.gv-floor-host { margin: 0; position: relative; }
+
+/* ============================================================
+   整层替换模式
+   ============================================================ */
+#chat > .mes.gv-full {
+  display: block !important;
+  width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+  margin: 0 !important; padding: 0 !important;
+  border: 0 !important; border-radius: 0 !important;
+  background: transparent !important; background-image: none !important;
+  box-shadow: none !important; backdrop-filter: none !important;
+  /* #chat 是 flex column, 必须禁止收缩, 否则楼层会被压扁、内容溢出重叠 */
+  flex: 0 0 auto !important;
+  height: auto !important; min-height: auto !important; max-height: none !important;
+}
+#chat > .mes.gv-full { position: relative !important; }
+/* 头像 / 滑动箭头等藏掉, 但"多选删除框"必须留着 */
+#chat > .mes.gv-full > *:not(.mes_block):not(.for_checkbox) { display: none !important; }
+#chat > .mes.gv-full > .for_checkbox {
+  display: flex !important; align-items: center;
+  position: absolute !important; left: 4px; top: 6px; z-index: 80;
+  margin: 0 !important; padding: 2px 4px !important;
+  background: rgba(10,12,18,.55); border-radius: 8px;
+  opacity: .18; transition: opacity .18s;
+}
+#chat > .mes.gv-full > .for_checkbox:hover { opacity: 1; }
+#chat > .mes.gv-full > .for_checkbox .del_checkbox { display: inline-block !important; cursor: pointer; }
+#chat > .mes.gv-full > .mes_block {
+  display: block !important; position: relative !important;
+  width: 100% !important; max-width: 100% !important;
+  margin: 0 !important; padding: 0 !important;
+  border: 0 !important; background: transparent !important; box-shadow: none !important;
+  overflow: visible !important;
+}
+/* 原生正文 / 思维链 藏掉, 但 .ch_name 要留着装原生按钮 */
+#chat > .mes.gv-full > .mes_block > *:not(.gv-floor-host):not(.ch_name) { display: none !important; }
+#chat > .mes.gv-full > .mes_block > .gv-floor-host { display: block !important; width: 100% !important; }
+
+/* 酒馆原生按钮条整个不要了 —— 用我们自己的 .gv-toolbar */
+#chat > .mes.gv-full > .mes_block > .ch_name { display: none !important; }
+
+/* ============================================================
+   自建工具条 (重复造轮子, 完全不依赖酒馆原生按钮)
+   ============================================================ */
+.gv-toolbar {
+  position: absolute; top: 0; right: 10px; z-index: 72;
+  display: flex; align-items: center; gap: 4px; padding: 3px 6px;
+  background: rgba(10,12,18,.62);
+  border: 1px solid rgba(255,255,255,.14); border-top: 0;
+  border-radius: 0 0 12px 12px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  opacity: .16; transition: opacity .18s;
+}
+.gv-phone:hover .gv-toolbar, .gv-toolbar:hover, .gv-toolbar.gv-expanded { opacity: 1; }
+.gv-toolbar-actions { display: none; gap: 4px; align-items: center; }
+.gv-toolbar.gv-expanded .gv-toolbar-actions { display: flex; }
+.gv-tb.gv-big { padding: 3px 16px; font-size: 12.5px; font-weight: 600;
+  background: rgba(255,255,255,.92); border-color: rgba(255,255,255,.55); color: #1a1d29;   /* 初始就是浅色/白色的那个「编辑」 */
+  box-shadow: 0 2px 8px rgba(0,0,0,.28); }
+.gv-tb.gv-big:hover { background: #fff; color: #10121a; }
+.gv-tb.gv-big.gv-open { background: #ff8fb1; color: #10121a; }
+.gv-tb.gv-toggle.gv-on { background: #7fd1ff; color: #10121a; font-weight: 700; }
+.gv-tb {
+  cursor: pointer; padding: 1px 9px; border-radius: 6px; font-size: 11.5px;
+  background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.9); white-space: nowrap; transition: background .15s;
+}
+.gv-tb:hover { background: rgba(255,255,255,.26); }
+.gv-tb.gv-sq { padding: 1px 7px; }
+.gv-tb.gv-danger:hover { background: rgba(255,90,90,.9); color: #fff; }
+.gv-tb.gv-primary { background: #ff8fb1; color: #10121a; font-weight: 700; }
+
+/* 自建编辑器 */
+/* 音量面板 (右上角「编辑 → 调整音量」) —— gv-vol-v2: 放在画面上半部分, 不挡下面的对话框 */
+.gv-vol { position: absolute; left: 12px; right: 12px; top: 12%; bottom: auto; z-index: 40; display: none;
+  flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px;
+  background: rgba(16,18,28,.94); border: 1px solid rgba(255,255,255,.18); color: #e6e9f2; }
+.gv-vol.gv-open { display: flex; }
+.gv-vol-row { display: flex; align-items: center; gap: 9px; font-size: 12px; }
+.gv-vol-lb { width: 32px; flex: 0 0 auto; }
+.gv-vol-rng { flex: 1; accent-color: #ff8fb1; }
+.gv-vol-pc { width: 40px; text-align: right; font-size: 11px; opacity: .8; }
+.gv-vol-tip { font-size: 11px; opacity: .6; }
+.gv-vol-btn { flex: 0 0 auto; padding: 2px 9px; border-radius: 7px; font-size: 11px; cursor: pointer;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2); }
+.gv-vol-btn:hover { background: rgba(255,143,177,.85); color: #10121a; }
+/* gv-vol-v4 */
+.gv-vol-x { position: absolute; top: 4px; right: 8px; width: 20px; height: 20px; line-height: 19px;
+  text-align: center; border-radius: 6px; font-size: 15px; cursor: pointer; opacity: .7; background: rgba(255,255,255,.12); }
+.gv-vol-x:hover { opacity: 1; background: rgba(255,143,177,.9); color: #10121a; }
+
+.gv-editor {
+  position: absolute; inset: 0; z-index: 90; display: none;
+  flex-direction: column; gap: 8px; padding: 14px;
+  background: rgba(8,10,16,.95);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.gv-editor.gv-open { display: flex; }
+.gv-editor-ta {
+  flex: 1; width: 100%; resize: none; border-radius: 10px; padding: 10px;
+  background: rgba(255,255,255,.06); color: #e6e9f2;
+  font-size: 12.5px; line-height: 1.6; font-family: ui-monospace, "Cascadia Code", monospace;
+  border: 1px solid rgba(255,255,255,.18); outline: none;
+}
+.gv-editor-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* 玩家输入楼层: 黑色一行 + 向下展开的半透明区 (不再往右撑) */
+.gv-userbar-wrap { display: block; }
+.gv-userbar {
+  max-width: min(100%, 400px); margin: 0 auto;
+  border-radius: 16px; overflow: hidden;
+  background: rgba(18,20,30,.82);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 3px 12px rgba(0,0,0,.35);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #e6e9f2; font-size: 13.5px; line-height: 1.55;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  user-select: none;
+}
+.gv-ubar-main { display: flex; align-items: center; gap: 10px; padding: 11px 14px; }
+.gv-userbar .gv-uava {
+  position: static; top: auto; right: auto; left: auto; bottom: auto;   /* 玩家楼层: 头像回到黑条里, 原来的位置 */
+  width: 46px; height: 46px; border-radius: 12px; flex: 0 0 auto; object-fit: cover;
+  border: 1px solid rgba(255,255,255,.28); box-shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+.gv-userbar .gv-utext { flex: 1; min-width: 0; text-align: left; white-space: pre-wrap; word-break: break-word; color: #eef1f8; }
+.gv-userbar .gv-utext b { color: #7fd1ff; font-weight: 700; margin-right: 8px; }
+.gv-ubar-btn {
+  cursor: pointer; flex: 0 0 auto; padding: 4px 13px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.9);
+}
+.gv-ubar-btn:hover { background: rgba(255,255,255,.26); }
+.gv-ubar-extra {
+  display: none; padding: 9px 12px 11px;
+  background: rgba(255,255,255,.05);
+  border-top: 1px solid rgba(255,255,255,.09);
+}
+.gv-userbar-wrap.gv-open .gv-ubar-extra { display: block; }
+.gv-ubar-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.gv-ubar-editor { display: none; flex-direction: column; gap: 6px; margin-top: 9px; }
+.gv-ubar-editor.gv-open { display: flex; }
+.gv-ubar-editor textarea {
+  width: 100%; min-height: 96px; resize: vertical; border-radius: 10px; padding: 9px;
+  background: rgba(255,255,255,.06); color: #e6e9f2; font-size: 12.5px; line-height: 1.6;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  border: 1px solid rgba(255,255,255,.18); outline: none;
+}
+.gv-ubar-editor .row { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* AI 楼层: 编辑按钮下方弹出的气泡菜单 (在手机框里面) */
+.gv-popup {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0;
+  flex-direction: column; gap: 4px; padding: 7px; min-width: 106px;
+  background: rgba(10,12,18,.94);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 11px; box-shadow: 0 10px 26px rgba(0,0,0,.6);
+  backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
+}
+.gv-popup.gv-open { display: flex; }
+.gv-popup::before {
+  content: ""; position: absolute; top: -6px; right: 16px;
+  border: 6px solid transparent; border-top: 0;
+  border-bottom-color: rgba(10,12,18,.94);
+}
+.gv-popup .gv-tb { display: block; text-align: center; padding: 5px 12px; font-size: 12px; }
+/* ---------- 情绪气泡贴纸 ---------- */
+.gv-sticker { position: absolute; left: var(--gv-bx, 78%); top: var(--gv-by, 24%); width: 30%;
+  transform: translate(-50%, -50%) scale(var(--gv-bs, 1)); transform-origin: 50% 50%;
+  z-index: 20; opacity: 0; pointer-events: none; }
+.gv-sticker img { width: 100%; display: block; }
+.gv-sticker.gv-on { opacity: 1; }
+@keyframes gv-b-pop {
+  0% { transform: translate(-50%,-50%) scale(0); }
+  60% { transform: translate(-50%,-50%) scale(calc(var(--gv-bs,1) * 1.25)); }
+  100% { transform: translate(-50%,-50%) scale(var(--gv-bs,1)); } }
+@keyframes gv-b-left {
+  0% { transform: translate(calc(-50% - 90px),-50%) scale(var(--gv-bs,1)); opacity: 0; }
+  70% { transform: translate(calc(-50% + 8px),-50%) scale(var(--gv-bs,1)); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(var(--gv-bs,1)); opacity: 1; } }
+@keyframes gv-b-diag {
+  0% { transform: translate(calc(-50% + 70px), calc(-50% + 70px)) scale(calc(var(--gv-bs,1) * .6)); opacity: 0; }
+  70% { transform: translate(calc(-50% - 6px), calc(-50% - 6px)) scale(calc(var(--gv-bs,1) * 1.06)); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(var(--gv-bs,1)); opacity: 1; } }
+@keyframes gv-b-blink {
+  0%,100% { transform: translate(-50%,-50%) scale(var(--gv-bs,1)); opacity: 1; }
+  15%,45% { opacity: .15; }
+  30%,60% { opacity: 1; } }
+.gv-sticker.gv-b-pop { animation: gv-b-pop .5s cubic-bezier(.2,1.5,.4,1) forwards; }
+.gv-sticker.gv-b-left { animation: gv-b-left .5s cubic-bezier(.2,1.2,.4,1) forwards; }
+.gv-sticker.gv-b-diag { animation: gv-b-diag .55s cubic-bezier(.2,1.2,.4,1) forwards; }
+.gv-sticker.gv-b-blink { animation: gv-b-blink .9s ease forwards; }
+.gv-sticker.gv-b-none { opacity: 1; }
+
+/* ---- 模板里的提示条 (预览演示用) ---- */
+.gv-tpl-toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:99;
+  background:rgba(20,22,32,.92);color:#eef1f8;border:1px solid rgba(255,255,255,.2);
+  padding:5px 14px;border-radius:999px;font-size:12px;white-space:nowrap;animation:gv-toast-in .18s ease;}
+@keyframes gv-toast-in{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1}}
+.gv-sheet-toast.bad{background:rgba(255,90,90,.95);color:#fff;}
+
+/* ---- User 楼层那一支也要 border-box, 否则编辑框 width:100% + padding 会超出容器右侧被裁 ---- */
+.gv-userbar-wrap, .gv-userbar-wrap * { box-sizing: border-box; }
