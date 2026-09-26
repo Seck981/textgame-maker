@@ -197,7 +197,12 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 
 ---
 
-© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.5**
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.6**
+
+**v1.0.6 改了什么**：更新「页面排版 → 指导提示词」（给 AI 写模板用的那份说明），跟上前几个版本的行为 ——
+char 楼层写上了气泡的**三档落点**（`bubblePosEach[贴纸名]` → `bubblePosSlot[当前行的 slot]` → `bubblePos`）以及
+「暂停只发 `bgmPause`、别自己挂 click 补播」（就是 v1.0.5 修的那个坑）；悬浮窗楼层写上了
+`floors[].html` **已经是渲染好的 HTML**（围栏已换成活 iframe，直接 `innerHTML`）和活 iframe 的高度上报 `__gvFit`。
 
 **v1.0.5 改了什么**：修好「BGM 暂停了，一点酒馆别的地方音乐又自己响」。根因是引擎里那段
 「首次点击补播放」的兜底（浏览器自动播放限制用的）没有看用户的暂停状态 —— 点任何地方都会 `play()` 一次。
