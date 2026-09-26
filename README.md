@@ -197,9 +197,16 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 
 ---
 
-© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.16**
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.17**
 
-**v1.0.16 改了什么**：**悬浮层不再塞进沙盒 iframe，改成直接挂进酒馆页面（shadow DOM 隔离样式）** —— 这才是「选项点了没反应」的根子，也是旧版能点、新版点不开的原因。
+**v1.0.17 改了什么**：修 v1.0.16「悬浮层直挂」漏掉的两处，**面板自身交互恢复**（能拖、能点按钮、能缩放），同时保留直挂带来的好处（内层块 = 旧卡那条直连路径）。
+
+1. **宿主没给 `pointer-events: auto`**：卡里的挂载点 `.gv-shadow-mount` 是 `pointer-events: none`（当初是给 iframe 用的，iframe 自己设了 auto）。直挂之后宿主继承了 none → 整个面板收不到鼠标事件 → 拖不动、按钮没反应、缩放失效。现在直挂宿主显式 `pointer-events: auto`。
+2. **文档级监听挂错地方**：面板模板里「按住拖动 / 松手」写的是 `document.addEventListener('mousemove'/'mouseup')`；直挂时我把 `document` 代理到 shadow 上了，shadow 收不到文档级鼠标事件 → 拖拽失效。现在这类监听一律挂到**真文档**上。
+
+实测：面板 `pointer-events:auto` ✓、按住标题栏拖动**位移 100,80**（拖多少走多少）✓、点 `Aa` 按钮有反应 ✓；同时卡片 `opts:3` ✓、点选项 → **酒馆输入框出现「去永宁宫」** ✓（内层依旧是旧卡那条直连路径，不走任何消息转发）。
+
+**v1.0.16 改了什么**（悬浮层直挂，shadow DOM 隔离样式）
 
 - 旧版（引擎自带面板）是**直接渲染在酒馆页面里**的：活 iframe 的 `window.parent` **就是酒馆页面**，卡片脚本里 `window.parent.document.querySelector('#send_textarea')`、`window.parent.triggerSlash` 直接能用。
 - 新版把「悬浮层模板」放进了**沙盒 iframe**（为了隔离），于是同样那两行拿到的变成了沙箱 ✗ → 只能靠「假 parent + postMessage 转发」，任何一环不对就变成「点了没反应」。

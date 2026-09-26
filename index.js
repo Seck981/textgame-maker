@@ -6,10 +6,10 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.16', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.17', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
-            /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
+              /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
   /* ==GV-RICH-START== 悬浮窗富渲染: 本段必须保持自包含 —— tpl-build/sync-rich.mjs
        会把整段抄进插件(index.js)给预览用, 两边共用一套切分/围栏代码 */
     var FENCE3 = String.fromCharCode(96, 96, 96);
@@ -204,6 +204,7 @@
       container.innerHTML = richHtml(text, messageId);
     }
     /* ==GV-RICH-END== */
+  /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */
   /* ==GV-RICH-END== */

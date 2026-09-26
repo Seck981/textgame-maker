@@ -1209,13 +1209,16 @@ function gvInlineExternalCss(html) {
     if (old) old.remove();
     var host = document.createElement('div');
     host.className = 'gv-tpl-inline';
-    host.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;';
+    /* ★ pointer-events:auto 必须显式给: 卡里的挂载点 .gv-shadow-mount 是 pointer-events:none(当初给 iframe 用的,
+       iframe 上单独设了 auto) —— 直挂之后宿主会继承 none, 整个面板收不到鼠标事件(拖不动/点按钮没反应/不能缩放) */
+    host.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;pointer-events:auto;';
     var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
     var style = document.createElement('style');
     style.textContent = String(t.css || '');
     root.appendChild(style);
     var body = document.createElement('div');
     body.className = 'gv-tpl-body';
+    body.style.cssText = 'pointer-events:auto;';
     body.innerHTML = String(t.html || '');
     root.appendChild(body);
     container.appendChild(host);
@@ -1224,8 +1227,10 @@ function gvInlineExternalCss(html) {
       querySelector: function (s) { return root.querySelector(s); },
       querySelectorAll: function (s) { return root.querySelectorAll(s); },
       getElementsByClassName: function (c) { return root.querySelectorAll('.' + c); },
-      addEventListener: function () { return root.addEventListener.apply(root, arguments); },
-      removeEventListener: function () { return root.removeEventListener.apply(root, arguments); },
+      /* ★ 监听一律挂到【真文档】上: 模板里"按住拖动/松手"写的是 document.addEventListener('mousemove'/'mouseup'),
+         挂到 shadow 上永远收不到文档级鼠标事件 -> 拖不动 */
+      addEventListener: function () { return document.addEventListener.apply(document, arguments); },
+      removeEventListener: function () { return document.removeEventListener.apply(document, arguments); },
       createElement: function () { return document.createElement.apply(document, arguments); },
       createTextNode: function () { return document.createTextNode.apply(document, arguments); },
       body: body, documentElement: document.documentElement, head: document.head, title: document.title,
