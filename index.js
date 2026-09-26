@@ -326,8 +326,12 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
     UI = { mask, app, panes, open, close };
     return UI;
   }
-  function open() { buildUI(); UI.mask.classList.remove('tgm-hide'); refresh(); }
-  function close() { if (UI) UI.mask.classList.add('tgm-hide'); try { pvStopBgm(); } catch (e) {} }   /* ★ 关掉插件就别继续放预览的 BGM 了 */
+  function open() { buildUI(); _pvWinOpen = true; UI.mask.classList.remove('tgm-hide'); refresh(); }
+  function close() {
+    _pvWinOpen = false;                                   /* ★ 关着的时候: 预览再发 bgm/se 一律不理 */
+    if (UI) UI.mask.classList.add('tgm-hide');
+    try { pvStopBgm(); } catch (e) {}
+  }
 
 
 
@@ -1062,6 +1066,9 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
      音量共用真机那一份 (localStorage: gv_volume_v1) */
   const PV_VOL_KEY = 'gv_volume_v1';
   let _pvBgm = null, _pvSe = null, _pvBgmName = null;
+/* ★ 插件窗口开着没有: 关掉之后预览 iframe 还在跑(打字机/自动播放不会因为 display:none 停),
+   它会继续往宿主发 bgm / se -> 于是"我把插件关了它不响了, 一动别的页面它又开始响"。关着的时候一律不理。 */
+let _pvWinOpen = false;
   function pvVolume() {
     const v = { bgm: 0.8, se: 0.8 };
     try { const s = JSON.parse(localStorage.getItem(PV_VOL_KEY) || 'null');
@@ -2518,12 +2525,15 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
       if (d.type === 'ready') { try { const pl = payload || {}; pl.volume = pvVolume(); if (tplTab === 'panel') pl.panelBox = { h: Math.max(240, frame.clientHeight || 640) }; frame.contentWindow.postMessage({ __gv: 1, type: 'init', payload: pl }, '*'); } catch (x) {} return; }
       if (d.type === 'res') return;                                   // iframe 侧的字节桥回执(不用管)
       if (d.type === 'volume') { pvSetVolume(d.arg); return; }      // 预览里的音量滑块
-      if (d.type === 'bgm') { if (d.arg) pvPlayBgm(d.arg); else pvStopBgm(); return; }   // 预览里放/停 BGM (插件替它放)
+      if (d.type === 'bgm') {                                  // 预览里放/停 BGM (插件替它放)
+        if (!_pvWinOpen) return;                               // ★ 插件已经关了: 预览还在自动演, 别理它
+        if (d.arg) pvPlayBgm(d.arg); else pvStopBgm(); return;
+      }
       if (d.type === 'bgmQuery') { try { frame.contentWindow.postMessage({ __gv: 1, type: 'bgmState', arg: pvBgmState() }, '*'); } catch (x) {} return; }
       if (d.type === 'bgmSeekPct') { try { if (_pvBgm && isFinite(_pvBgm.duration) && _pvBgm.duration > 0) _pvBgm.currentTime = Math.max(0, Math.min(1, Number(d.arg) || 0)) * _pvBgm.duration; } catch (x) {} return; }
       if (d.type === 'bgmReplay') { try { if (_pvBgm && _pvBgm.src) { _pvBgm.currentTime = 0; _pvBgm.volume = pvVolume().bgm; _pvBgm.play().catch(function () {}); } } catch (x) {} return; }
       if (d.type === 'bgmPause') { pvToggleBgm(); return; }          // 暂停 / 继续 (音量面板上的按钮)
-      if (d.type === 'se') { pvPlaySe(d.arg); return; }             // 预览里放音效
+      if (d.type === 'se') { if (!_pvWinOpen) return; pvPlaySe(d.arg); return; }   // 预览里放音效 (关着也不理)
       if (d.type === 'resize') { frame.style.height = Math.max(60, Number(d.arg) || 200) + 'px'; return; }
       if (d.type === 'frameSize' && d.arg && d.arg.w) {
         cur.frameSize = { w: Number(d.arg.w) || 400, h: Number(d.arg.h) || 867 };
