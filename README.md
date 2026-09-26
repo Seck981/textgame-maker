@@ -40,6 +40,11 @@ https://github.com/Seck981/textgame-maker
 
 > 手动安装也行：把仓库整个 clone 到 `SillyTavern/data/<你的用户目录>/extensions/textgame-maker/`（文件夹名随意），刷新即可。
 
+### 更新
+
+酒馆 → 扩展 → 找到本扩展 → 点它右边的 **更新 / Update**（老版本没有这个按钮就删掉重装，重装不会动你的方案数据）。
+更新完 **刷新页面**（F5）。插件里的方案、素材、提示词都存在酒馆的扩展设置里，更新不会丢。
+
 ### 2) 放引擎文件（**必做**，否则预览和导出会读不到引擎）
 
 插件在**预览**和**导出**时，会去酒馆的 `public/galgame/` 目录读引擎文件。所以把仓库里 `engine/` 的内容复制到：
@@ -186,4 +191,8 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 **与酒馆助手（JS-Slash-Runner）的关系**：本插件没有包含、也没有改写它的任何代码，只是让**导出产物**采用它能识别的脚本格式，
 两者互相独立、没有隶属关系；它自身遵循它自己的许可协议（Aladdin Free Public License），与本插件的许可互不影响。
 
-版本：**v1.0.0**
+其余说明（署名怎么写、第三方库、和酒馆助手的关系）见仓库里的 [NOTICE](NOTICE)。
+
+---
+
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.0**

@@ -1,24 +1,3 @@
-TextGameMaker（文字游戏页面制作器 SillyTavern 插件）
-Copyright (c) 2026 TextGameMaker
-
-本作品采用「知识共享 署名—非商业性使用—相同方式共享 4.0 国际 (CC BY-NC-SA 4.0)」许可协议。
-This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
-
-您可以自由地：
-  · 共享 —— 以任何媒介或格式复制、发行本作品；
-  · 演绎 —— 修改、转换或以本作品为基础进行创作。
-但必须遵守以下条件：
-  · 署名 —— 必须给出适当的署名，提供指向本许可协议的链接，并标明是否作出了修改；
-  · 非商业性使用 —— 不得将本作品用于商业目的（包括出售、付费分发、内置到商业产品等）；
-  · 相同方式共享 —— 若再混合、转换或基于本作品创作，必须以相同的许可协议分发您的贡献。
-  · 不得增加额外的法律条款或技术措施来限制他人做本许可协议允许的事。
-
-许可协议概要（中文）：https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-Hans
-法律文本（中文参考译文）：https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.zh-Hans
-以下为具法律效力的英文法律文本（Attribution-NonCommercial-ShareAlike 4.0 International）。
-本作品中的第三方库（engine/libs/、engine/fa-inline.css 等）仍遵循其各自的原许可协议，版权归各自作者所有。
-
-=======================================================================
 Attribution-NonCommercial-ShareAlike 4.0 International
 
 =======================================================================
