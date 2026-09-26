@@ -904,7 +904,11 @@ async function tplPayload(kind, data) {
       const nm = String((l && l.name) || '').trim();
       if (nm) _faceUse['@' + nm] = 1;
       if (nm && l && l.face) _faceUse[nm + '|' + String(l.face).trim().toLowerCase()] = 1;
-      String((l && l.text) == null ? '' : l.text).replace(/(?:bubble|气泡)[:：]([^|,，、+\s]+)/g, function (m, n) { _bubUse[n] = 1; return m; });
+      /* ★ 台词和效果字段【都要扫】: 解析器修好之后气泡名在 fx 里(不再混在台词里),
+         只扫 text 就扫不到 -> 给模板的气泡表里缺这张 -> 真机报"素材对不上"、气泡也不弹 (2026-09-26) */
+      const _scanBub = (s) => String(s == null ? '' : s).replace(/(?:bubble|气泡)[:：]([^|,，、+\s]+)/g, function (m, n) { _bubUse[n] = 1; return m; });
+      _scanBub(l && l.text);
+      _scanBub(l && l.fx);
     });
     /* ★ 并行转图: 一张 13MB 背景 + 几张 10MB 立绘顺序转要好几秒, 顺序转的时候楼层一直是"挂载中",
        慢到 sweep 收工就会被清掉。并行之后总耗时 ≈ 最慢的那一张。 */
