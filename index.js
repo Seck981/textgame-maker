@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.1', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.2', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
   /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步
@@ -3966,7 +3966,7 @@ const stripAudio = (t) => {
     /* ★ 便携版烘焙: 本地文件类素材转成 data: 写进脚本 (图 ≤900px webp), 让拿到脚本的人【不导包也有图】。
        对方之后导入素材包 ZIP 时以包为准 (包里走 1440 高清), 这里只是开箱即用的兜底。
        音频: 只烘 ≤2MB 的 (浏览器里没有 mp3 编码器, MediaRecorder 只能实时录 —— 大 BGM 重编码不现实), 超过的列出来。 */
-    const bakeStat = { img: 0, imgKB: 0, audio: 0, audioKB: 0, skipAudio: [] };
+    const bakeStat = { img: 0, imgKB: 0, audio: 0, audioKB: 0, skipAudio: [], saved: [], how: {} };
     const bake = async (e) => {
       try {
         const d = await previewSmall(e, 900);
@@ -3999,14 +3999,114 @@ const stripAudio = (t) => {
       const b = await blobGet(blobId); if (!b) return '';
       return await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = () => res(''); fr.readAsDataURL(b); });
     };
+    /* ============================================================
+       音频压缩: WebCodecs(AudioEncoder) 编 Opus + 自己封 Ogg
+       —— 浏览器里没有 mp3 编码器(实测), 但 Opus 有, 而且比实时快几十倍:
+          64kbps Opus 的听感和 320kbps mp3 接近, 体积约 1/5 —— 几 MB 的歌压完就能塞进脚本。
+       —— 输出是标准 Ogg Opus (实测 <audio> 能播: duration 对得上, decodeAudioData 也能解)。
+       ============================================================ */
+    const OGG_CRC_T = (function () {
+      const t = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) { let c = n << 24; for (let k = 0; k < 8; k++) c = (c & 0x80000000) ? ((c << 1) ^ 0x04c11db7) : (c << 1); t[n] = c >>> 0; }
+      return t;
+    })();
+    const oggCrc = u8 => { let c = 0; for (let i = 0; i < u8.length; i++) c = ((c << 8) >>> 0) ^ OGG_CRC_T[((c >>> 24) ^ u8[i]) & 0xff]; return c >>> 0; };
+    function oggPage(serial, seq, granule, flags, packets) {
+      const segs = [], body = []; let total = 0;
+      packets.forEach(p => { let n = p.length; while (n >= 255) { segs.push(255); n -= 255; } segs.push(n); body.push(p); total += p.length; });
+      const head = new Uint8Array(27 + segs.length);
+      head[0] = 79; head[1] = 103; head[2] = 103; head[3] = 83; head[4] = 0; head[5] = flags;
+      let g = granule; for (let i = 0; i < 8; i++) { head[6 + i] = g & 0xff; g = Math.floor(g / 256); }
+      head[14] = serial & 0xff; head[15] = (serial >> 8) & 0xff; head[16] = (serial >> 16) & 0xff; head[17] = (serial >> 24) & 0xff;
+      head[18] = seq & 0xff; head[19] = (seq >> 8) & 0xff; head[20] = (seq >> 16) & 0xff; head[21] = (seq >> 24) & 0xff;
+      head[26] = segs.length; for (let j = 0; j < segs.length; j++) head[27 + j] = segs[j];
+      const out = new Uint8Array(head.length + total); out.set(head, 0);
+      let at = head.length; body.forEach(b => { out.set(b, at); at += b.length; });
+      const crc = oggCrc(out);
+      out[22] = crc & 0xff; out[23] = (crc >> 8) & 0xff; out[24] = (crc >> 16) & 0xff; out[25] = (crc >>> 24) & 0xff;
+      return out;
+    }
+    function oggOpusBlob(packets, ch, rate, preSkip) {
+      const serial = (Math.random() * 0x7fffffff) | 0, parts = [];
+      const head = new Uint8Array(19), magic = [79, 112, 117, 115, 72, 101, 97, 100];   /* OpusHead */
+      for (let i = 0; i < 8; i++) head[i] = magic[i];
+      head[8] = 1; head[9] = ch; head[10] = preSkip & 0xff; head[11] = (preSkip >> 8) & 0xff;
+      head[12] = rate & 0xff; head[13] = (rate >> 8) & 0xff; head[14] = (rate >> 16) & 0xff; head[15] = (rate >> 24) & 0xff;
+      parts.push(oggPage(serial, 0, 0, 2, [head]));
+      const ven = new TextEncoder().encode('TextGameMaker');
+      const tags = new Uint8Array(12 + ven.length + 4), tm = [79, 112, 117, 115, 84, 97, 103, 115];   /* OpusTags */
+      for (let i = 0; i < 8; i++) tags[i] = tm[i];
+      tags[8] = ven.length & 0xff; tags[9] = (ven.length >> 8) & 0xff; tags.set(ven, 12);
+      parts.push(oggPage(serial, 1, 0, 0, [tags]));
+      let seq = 2, batch = [], bytes = 0, lastEnd = 0;
+      packets.forEach(p => {
+        batch.push(p.data); bytes += p.data.length; lastEnd = p.endSample;
+        if (bytes >= 4000) { parts.push(oggPage(serial, seq++, lastEnd + preSkip, 0, batch)); batch = []; bytes = 0; }
+      });
+      if (batch.length) parts.push(oggPage(serial, seq++, lastEnd + preSkip, 4, batch));
+      else { const last = parts[parts.length - 1]; last[5] = last[5] | 4; }
+      return new Blob(parts, { type: 'audio/ogg' });
+    }
+    /* 把一个音频 Blob 重编码成 Opus (返回 null = 这台浏览器做不了, 调用方回退原样) */
+    async function opusCompress(blob, kbps) {
+      try {
+        if (typeof AudioEncoder === 'undefined') return null;
+        const ab = await blob.arrayBuffer();
+        const dec = new OfflineAudioContext(1, 1, 48000);      /* 只用它解码: 不需要用户手势 */
+        let buf; try { buf = await dec.decodeAudioData(ab.slice(0)); } catch (e) { try { console.warn('[tgm] 音频解码失败(压缩跳过)', String(e)); } catch (e2) {} return null; }
+        const SR = 48000, ch = Math.min(2, buf.numberOfChannels || 1);
+        const frames = Math.max(1, Math.round(buf.duration * SR));
+        const oac = new OfflineAudioContext(ch, frames, SR);
+        const src = oac.createBufferSource(); src.buffer = buf; src.connect(oac.destination); src.start();
+        const rendered = await oac.startRendering();
+        const cfg = { codec: 'opus', sampleRate: SR, numberOfChannels: ch, bitrate: Math.max(16000, (Math.round(kbps) || 64) * 1000) };
+        const sup = await AudioEncoder.isConfigSupported(cfg);
+        if (!sup.supported) { try { console.warn('[tgm] Opus 配置不支持', cfg); } catch (e2) {} return null; }
+        const chunks = []; let err = null;
+        const enc = new AudioEncoder({
+          output: c => { const u = new Uint8Array(c.byteLength); c.copyTo(u); chunks.push({ data: u, dur: c.duration }); },
+          error: e => { err = String((e && e.message) || e); },
+        });
+        enc.configure(cfg);
+        const FR = 960;                                        /* 20ms @48k */
+        for (let off = 0; off < rendered.length; off += FR) {
+          const n = Math.min(FR, rendered.length - off);
+          const f = new Float32Array(n * ch);
+          for (let c = 0; c < ch; c++) { const s = rendered.getChannelData(c); for (let k = 0; k < n; k++) f[k * ch + c] = s[off + k]; }
+          const ad = new AudioData({ format: 'f32', sampleRate: SR, numberOfFrames: n, numberOfChannels: ch, timestamp: Math.round(off / SR * 1e6), data: f });
+          enc.encode(ad); ad.close();
+        }
+        await enc.flush(); try { enc.close(); } catch (e) {}
+        if (err || !chunks.length) { try { console.warn('[tgm] Opus 编码没出数据', err || 'empty'); } catch (e2) {} return null; }
+        const preSkip = 312; let acc = 0;
+        const pk = chunks.map(c => { acc += Math.round((c.dur || 20000) * SR / 1e6); return { data: c.data, endSample: acc }; });
+        const out = oggOpusBlob(pk, ch, SR, preSkip);
+        return (out && out.size) ? out : null;
+      } catch (e) { try { console.warn('[tgm] 压缩音频出错', String(e && e.message || e)); } catch (e2) {} return null; }
+    }
+    const blobToDataUrl2 = b => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = () => res(''); fr.readAsDataURL(b); });
+    const mbTxt = n => (n / 1048576).toFixed(1) + 'MB';
+    /* ★ 本地音频怎么进脚本 (方案里存 audioOpus):
+        64 / 96 = 先压成 Opus 再烘 (推荐; 几 MB 的歌压到 1/5, 拿到脚本的人不导包也有 BGM)
+        0       = 原样烘 (脚本很大)
+        -1      = 不烘 (只进素材包)
+       以前写死 2MB 直接跳过 —— 用户导了歌、真机静音, 状态里还看不到任何解释。 */
     const bakeAudio = async (a, nm) => {
       if (!a || !a.blobId || a.kind !== 'file') return '';
       try {
         const b = await blobGet(a.blobId);
         if (!b) return '';
-        if (b.size > 2 * 1048576) { bakeStat.skipAudio.push(nm + '(' + (b.size / 1048576).toFixed(1) + 'MB)'); return ''; }
-        const d = await fileDataUrl(a.blobId);
-        if (d && d.indexOf('data:') === 0) { bakeStat.audio++; bakeStat.audioKB += Math.round(d.length / 1024); return d; }
+        const mode = (p && p.audioOpus === undefined) ? 64 : Number(p.audioOpus);
+        if (mode < 0) { bakeStat.skipAudio.push(nm + '(设置成不烘)'); return ''; }
+        let use = b, how = '原样';
+        if (mode > 0 && b.size > 1048576) {                  /* 1MB 以下压了也白压 (Opus 有固定头开销) */
+          const o = await opusCompress(b, mode);
+          if (o && o.size && o.size < b.size) { use = o; how = 'Opus' + mode + 'k'; bakeStat.saved.push(nm + ' ' + mbTxt(b.size) + '→' + mbTxt(o.size)); }
+          else { try { console.warn('[tgm] 压缩没变小或失败', nm, b.size, o && o.size); } catch (e2) {} }
+        }
+        if (use.size > 12 * 1048576) { bakeStat.skipAudio.push(nm + '(' + mbTxt(use.size) + ')'); return ''; }
+        const d = await blobToDataUrl2(use);
+        if (d && d.indexOf('data:') === 0) { bakeStat.audio++; bakeStat.audioKB += Math.round(d.length / 1024); bakeStat.how[nm] = how; return d; }
       } catch (e) {}
       return '';
     };
@@ -4087,6 +4187,12 @@ const stripAudio = (t) => {
       const d = await bakeAudio(s, nm); if (d) seMap[nm] = d;
     }
     c = sub(c, /seMap: \{\},/, 'seMap: ' + JSON.stringify(seMap) + ',', 'card.seMap(url' + Object.keys(seMap).length + ')');
+    /* ★ 音频的账要在这里报 (上面那行 `baked 图…` 跑在音频烘焙之前, 所以"太大未烘"永远不会出现在状态里 ——
+       用户导了歌、导出后真机静音, 却看不到任何解释) */
+    report.push('音频: BGM ' + Object.keys(audioMap).length + ' 首 / 音效 ' + Object.keys(seMap).length + ' 个进脚本'
+      + (bakeStat.audio ? '（共 ' + Math.round(bakeStat.audioKB / 1024) + 'MB）' : '')
+      + (bakeStat.saved.length ? ' · 压缩: ' + bakeStat.saved.join('、') : '')
+      + (bakeStat.skipAudio.length ? ' · 没进脚本: ' + bakeStat.skipAudio.join(' ') + '（它们仍然跟着「导出素材包 .zip」走）' : ''));
     c = sub(c, /bubblePos: \{ x: 78, y: 24, scale: 1 \},/,
       'bubblePos: ' + JSON.stringify(p.bubblePos || { x: 78, y: 24, scale: 1 }) + ',', 'card.bubblePos');
     /* ★ 楼层角落那个 ⋯（点了整页切回原生楼层）一律关掉 —— 不管源脚本里写的是什么 */
@@ -4261,12 +4367,24 @@ const stripAudio = (t) => {
     r2b.appendChild(b6); card.appendChild(r2b);
     card.appendChild(el('div', 'tgm-dlg-text',
       '【导出酒馆助手脚本】出来的是一份【自包含】的脚本：本地图片（背景 / 立绘 / 贴纸）都会【按低清烘一份】一起内联进去，'
-      + '2MB 以内的音频 / 音效也一并烘进去 —— 别人只拿这一个 .json 就能跑，不用再传别的东西。'
+      + '本地音频 / 音效按上面选的「本地音频上限」一起烘进去 —— 别人只拿这一个 .json 就能跑，不用再传别的东西。'
+      + '超过上限的音频不进脚本（导出状态里会列出来），它们跟着素材包 .zip 走：对方在悬浮窗「素」→「① 导入高清素材包」里导入即可。'
       + '　【导出素材包 .zip】是可选的：里面装的是【原图（高清）】+ manifest.json。'
       + '低清和高清摆在手机框里看几乎没差别，所以平时直接导脚本就够了；只有你想让别人拿到高清原图时才另外导素材包。'
       + '　给「制作器」用（别人还要接着改方案）才导【工程包】：方案 json + 全部素材打成一个 zip。'));
     b4.addEventListener('click', exportAssetPack);
     b4b.addEventListener('click', exportProjectPack);
+    /* ★ 本地音频怎么进脚本: 默认压成 Opus 64k (听感接近 320k mp3, 体积约 1/5) */
+    const rAu = el('div', 'tgm-row');
+    rAu.appendChild(el('div', 'tgm-code', '本地音频'));
+    [['64', '压缩 Opus 64k（推荐）'], ['96', 'Opus 96k（音质更好）'], ['0', '原样烘（脚本很大）'], ['-1', '不烘（只进素材包）']].forEach(function (o) {
+      const curV = (cur.audioOpus === undefined) ? 64 : Number(cur.audioOpus);
+      const b = el('div', 'tgm-btn' + (curV === Number(o[0]) ? ' tgm-primary' : ''), o[1]);
+      b.title = '本地文件类的 BGM / 音效怎么进脚本：压成 Opus 可以小到 1/5（浏览器里实测：30 秒立体声压完只要 0.8 秒，<audio> 正常播放）。选「不烘」的话它们只跟着「导出素材包 .zip」走。';
+      b.addEventListener('click', async () => { cur.audioOpus = Number(o[0]); await putProjectData(cur); renderExport(); });
+      rAu.appendChild(b);
+    });
+    card.appendChild(rAu);
     card.appendChild(el('div', 'tgm-status', '')).id = 'tgm-exp-status';
     b0.addEventListener('click', exportTavernScript);
     b2.addEventListener('click', async () => {

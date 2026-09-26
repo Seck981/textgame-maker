@@ -1633,11 +1633,20 @@ function ensureAudio() {
     document.addEventListener('touchstart', resume, true);
   } catch (e) {}
 }
+/* ★ 找不到音频时别装死: 进度条一直 0:00, 用户根本分不清是"没烘进脚本"还是"脚本坏了" */
+var _noAudioWarned = {};
+function warnNoAudio(kind, name) {
+  var k = kind + '|' + name;
+  if (_noAudioWarned[k]) return;
+  _noAudioWarned[k] = 1;
+  var msg = kind + '「' + name + '」在脚本里没有音频数据：本地文件偏大没烘进脚本（重新导出时把「本地音频上限」调大），或者它来自素材包（悬浮窗「素」→ ① 导入高清素材包）。';
+  try { if (typeof toastr !== 'undefined') toastr.warning(msg, '声音', { timeOut: 8000 }); else console.warn('[gv] ' + msg); } catch (e) {}
+}
 function playBgm(name) {
   if (!name) return;
   const map = CONFIG.audioMap || {};
   const url = map[name];
-  if (!url) return;                                  // 没导入就静默跳过
+  if (!url) { warnNoAudio('BGM', name); return; }     // 没这个音频: 提示一次, 别静默跳过
   ensureAudio(); if (!_bgmEl) return;
   if (_bgmName === name && _bgmEl.src && !_bgmEl.paused) return;   // 同一首重复出现: 不重播
   if (_bgmName === name && _bgmEl.src && _bgmUserPaused) return;   // ★ 同一首被用户暂停了: 别自动续播
@@ -1687,7 +1696,7 @@ function playSe(name) {
   if (!name) return;
   const map = CONFIG.seMap || {};
   const url = map[name];
-  if (!url) return;                                  // 没导入就静默跳过
+  if (!url) { warnNoAudio('音效', name); return; }    // 同上: 提示一次
   ensureAudio(); if (!_seEl) return;
   try {
     _seEl.pause(); _seEl.currentTime = 0;            // ★ 同时只播一个: 新的把旧的停掉

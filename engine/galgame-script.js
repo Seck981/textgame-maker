@@ -1103,7 +1103,17 @@ function ensurePanel() {
       setFloors(list) { if (ctl) ctl.send('floors', list || []); },
       show() {}, hide() {}, collapse() {}, destroy() { if (ctl) ctl.destroy(); },
     };
-    ctl = P.Galgame.mountTemplate(m, 'panel', { kind: 'panel', floors: [] }, {
+    /* ★ 面板模板要的初始数据: 楼层 + 格式提示词 + 转换设置。
+       以前这里只给了 floors —— 悬浮窗「词」里永远是空的, 用户以为提示词没存进去。
+       (引擎自带面板那条路是传 getPrompt() 的, 所以只有模板面板会缺这一份) */
+    const panelInit = () => ({
+      kind: 'panel', floors: [],
+      prompt: buildPrompt(),
+      convertCfg: (function () {
+        try { return P.Galgame.loadConvertCfg ? P.Galgame.loadConvertCfg() : JSON.parse(localStorage.getItem('gv_convert_api_v1') || '{}'); } catch (e) { return {}; }
+      })(),
+    });
+    ctl = P.Galgame.mountTemplate(m, 'panel', panelInit(), {
       minH: 90,
       canvas: true,      // ★ 整窗口画布 + clip-path 抠出面板 (活动范围 = 整个窗口)
       /* ★ 悬浮窗模板发过来的动作 (以前一个都没接: 「导入素材包」点了等于没点) */
@@ -1115,7 +1125,7 @@ function ensurePanel() {
            删完按脚本自带素材重画一遍楼层 (作者更新卡后删掉/改名素材时用) */
         if (action === 'clearPackCache') { clearPackCache(); return; }
         if (action === 'closePanel' || action === 'close') { closePanel(); return; }
-        if (action === 'setPrompt') { savePromptOverride(String(arg == null ? '' : arg)); injectFormat(); if (typeof toastr !== 'undefined') toastr.success('提示词已保存'); return; }
+        if (action === 'setPrompt') { savePromptOverride(String(arg == null ? '' : arg)); injectFormat(); if (ctl) ctl.send('prompt', buildPrompt()); if (typeof toastr !== 'undefined') toastr.success('提示词已保存'); return; }
         if (action === 'convertCfg') { if (P.Galgame && P.Galgame.setConvertCfg) P.Galgame.setConvertCfg(arg); else { try { localStorage.setItem('gv_convert_api_v1', JSON.stringify(arg || {})); } catch (e) {} } if (typeof toastr !== 'undefined') toastr.success('转换设置已保存'); return; }
         if (action === 'redraw') { nukeAll(); later(scan, 250, 'scan'); if (typeof toastr !== 'undefined') toastr.success('已重绘'); return; }
         if (action === 'move' || action === 'wantSize') return;   // 模板自己拖/自己算宽, 宿主不用管
