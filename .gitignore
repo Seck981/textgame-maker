@@ -1,6 +1,7 @@
 # 依赖 / 构建产物
 node_modules/
 dist/
+templates/page-prompts.txt   # 生成器顺手写的可读版, 要提交的是 page-prompts.json
 *.log
 npm-debug.log*
 pnpm-debug.log*

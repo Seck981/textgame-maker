@@ -197,7 +197,14 @@ ST_DIR=/path/to/SillyTavern node templates/bake-prompts.mjs
 
 ---
 
-© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.7**
+© 2026 TextGameMaker · 本作品采用 [CC BY-NC-SA 4.0](LICENSE) 许可协议 · 版本：**v1.0.8**
+
+**v1.0.8 改了什么**：悬浮窗那层「指导提示词」补了一条**黑盒规则** —— 内容列表里那些「活 iframe」是黑盒：
+里面的卡片脚本点一下会把选项填进酒馆的输入框（引擎在沙箱里给它们装了假 parent，动作 postMessage 到最外层页面）。
+所以模板**别去清洗 / 重写 / 再包一层它的内容**，也别给 iframe 加 `sandbox`、`pointer-events: none`、或自己截它的点击 ——
+一拦，卡片里的按钮就又「点不开」了（就是 v1.0.7 修的那个毛病）。
+顺带修了构建链路的一个坑：`bake-prompts.mjs` 现在会**先按当前模板重跑一遍生成器再烘**（以前改了 `mk-page-prompts.mjs` 只跑 bake，
+会烘到旧的 `page-prompts.json`），并删掉仓库里那份过时的 `tools/mk-page-prompts.mjs` 副本（和 `templates/` 重复，改错地方就分叉）。
 
 **v1.0.7 改了什么**：修好「悬浮窗里的**剧情选项点了没反应**」。根因：悬浮窗模板跑在一个独立源的沙箱 iframe 里，
 选项卡片里那句 `window.parent.document.querySelector('#send_textarea')` 当场抛 `SecurityError`（跨源），脚本整段断掉 ——
