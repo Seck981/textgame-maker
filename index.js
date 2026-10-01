@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.25', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.26', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
                           /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
@@ -1166,7 +1166,7 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
       const box = el('div', 'tgm-dlg tgm-frame-dlg');
       box.appendChild(el('div', 'tgm-dlg-head', '站位编辑'));
       const body = el('div', 'tgm-dlg-body');
-      body.appendChild(el('div', 'tgm-dlg-text', '直接拖动台上的立绘决定它出现在哪；点一下选中，再用滑块调大小。'));
+      body.appendChild(el('div', 'tgm-dlg-text', '在台上【按住拖动】直接给选中的站位画框；画好后：拖上下左右四条边改大小、拖四个角整体改、拖框中间挪位置。'));
       const stage = el('div', 'tgm-frame tgm-slotstage');
       /* 站位台也用「定位框」的比例 (宽/高), 没有就退回手机比例 */
       stage.style.aspectRatio = String((p.frameSize && p.frameSize.w && p.frameSize.h) ? (p.frameSize.w / p.frameSize.h) : 9 / 19.5);
@@ -1174,66 +1174,130 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
       if (firstBg) { const u = await entryUrl(firstBg); const bi = el('img', 'tgm-frame-img'); bi.src = u; bi.style.opacity = '.55'; stage.appendChild(bi); }
       body.appendChild(stage);
 
+      /* ★ 这一版改成【画框】那套（和「页面排版 → 立绘站位 · 占位排版」同一套数据 slotBoxes、同一套操作）：
+         台上拖一下就画个框, 之后拖四条边改那一侧、拖四个角整体改、拖框中间挪位置。
+         以前是"拖立绘 + 底下一条大小滑块": 滑块只能等比缩放、**调不了上下高度**,
+         而且第一次 pointermove 会把框甩到鼠标上（用户明确要求换回画框这套）。 */
+      const boxes = JSON.parse(JSON.stringify(p.slotBoxes || {}));    // pos 上面已经建好了, 直接用
+      const defBox = (i, n) => { const nn = Math.max(1, n); const w = Math.max(12, Math.round(96 / nn));
+        return { x: 2 + Math.round(i * (100 / nn)), y: 18, w: w - 4, h: 76 }; };
+      slots.forEach((k, i) => {
+        if (!boxes[k] || !(Number(boxes[k].w) > 0) || !(Number(boxes[k].h) > 0)) boxes[k] = defBox(i, slots.length);
+      });
+      let active = slots[0];
+      const chipEls = {};
+      function drawChips() { slots.forEach(k => { if (chipEls[k]) chipEls[k].classList.toggle('tgm-on', k === active); }); }
+      const rowC = el('div', 'tgm-row');
+      rowC.appendChild(el('label', '', '正在画'));
+      slots.forEach(k => { const c = el('span', 'tgm-chip', k);
+        c.addEventListener('click', () => { active = k; paint(); }); rowC.appendChild(c); chipEls[k] = c; });
+      const bSplit = el('div', 'tgm-btn', '全部平分');
+      rowC.appendChild(bSplit);
+      body.appendChild(rowC);
+
+      const clampPct = v => Math.max(0, Math.min(100, v));
+      /* ---- 画框: 台上按住拖动 -> 拖出多大就是多大; 只点一下 -> 给个默认框 ---- */
+      stage.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        const r = stage.getBoundingClientRect();
+        const at = ev => ({ x: clampPct((ev.clientX - r.left) / Math.max(1, r.width) * 100),
+                            y: clampPct((ev.clientY - r.top) / Math.max(1, r.height) * 100) });
+        const p0 = at(e);
+        const ghost = el('div', 'tgm-slotbox tgm-slotbox-ghost');
+        stage.appendChild(ghost);
+        let made = null;
+        const move = ev => {
+          const c = at(ev);
+          made = { x: Math.min(p0.x, c.x), y: Math.min(p0.y, c.y), w: Math.abs(c.x - p0.x), h: Math.abs(c.y - p0.y) };
+          ghost.style.left = made.x + '%'; ghost.style.top = made.y + '%';
+          ghost.style.width = made.w + '%'; ghost.style.height = made.h + '%';
+        };
+        const up = () => {
+          window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+          try { ghost.remove(); } catch (x) {}
+          boxes[active] = (made && made.w >= 4 && made.h >= 5) ? made : defBox(slots.indexOf(active), slots.length);
+          paint();
+        };
+        window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+      });
+
+      /* ---- 改大小: 拖四条边只动那一条, 拖角两条一起动 (和占位排版那段一字不差) ---- */
+      function startDrag(e, k, mode) {
+        const r = stage.getBoundingClientRect();
+        const b = boxes[k];
+        const sx = e.clientX, sy = e.clientY, o = { x: b.x, y: b.y, w: b.w, h: b.h };
+        const MINW = 6, MINH = 6;
+        const move = ev => {
+          const dx = (ev.clientX - sx) / Math.max(1, r.width) * 100, dy = (ev.clientY - sy) / Math.max(1, r.height) * 100;
+          if (mode === 'move') {
+            b.x = Math.max(0, Math.min(100 - b.w, o.x + dx));
+            b.y = Math.max(0, Math.min(100 - b.h, o.y + dy));
+            return paint();
+          }
+          let x1 = o.x, y1 = o.y, x2 = o.x + o.w, y2 = o.y + o.h;
+          if (mode.indexOf('w') >= 0) x1 = Math.min(o.x + dx, x2 - MINW);
+          if (mode.indexOf('e') >= 0) x2 = Math.max(o.x + o.w + dx, x1 + MINW);
+          if (mode.indexOf('n') >= 0) y1 = Math.min(o.y + dy, y2 - MINH);
+          if (mode.indexOf('s') >= 0) y2 = Math.max(o.y + o.h + dy, y1 + MINH);
+          x1 = Math.max(0, x1); y1 = Math.max(0, y1); x2 = Math.min(100, x2); y2 = Math.min(100, y2);
+          if (x2 - x1 < MINW) { if (mode.indexOf('w') >= 0) x1 = Math.max(0, x2 - MINW); else x2 = Math.min(100, x1 + MINW); }
+          if (y2 - y1 < MINH) { if (mode.indexOf('n') >= 0) y1 = Math.max(0, y2 - MINH); else y2 = Math.min(100, y1 + MINH); }
+          b.x = x1; b.y = y1; b.w = x2 - x1; b.h = y2 - y1;
+          paint();
+        };
+        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+        window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+      }
+
+      const EDGES = [['n', '拖这条边改高度'], ['s', '拖这条边改高度'], ['w', '拖这条边改宽度'], ['e', '拖这条边改宽度'],
+                     ['nw', '拖角整体改大小'], ['ne', '拖角整体改大小'], ['sw', '拖角整体改大小'], ['se', '拖角整体改大小']];
       const marks = {};
-      let sel = slots[0];
       for (const k of slots) {
-        const m = el('div', 'tgm-slotmark');
+        const m = el('div', 'tgm-slotbox');
+        const inner = el('div', 'tgm-slotbox-in');
         const mi = el('img');
         const use = p.slotPreview[k];
         const face = use ? pool.find(x => x.id === use) : pool[0];
-        if (face) mi.src = await entryUrl(face.entry);
-        m.append(mi, el('span', 'tgm-slotlabel', k));
+        if (face) { try { mi.src = await entryUrl(face.entry); } catch (x) {} }
+        inner.appendChild(mi);
+        m.append(inner, el('span', 'tgm-slotlabel', k));
+        EDGES.forEach(function (it) {
+          const h = el('div', 'tgm-sloth tgm-sloth-' + it[0]); h.title = it[1];
+          h.addEventListener('pointerdown', function (e) { e.stopPropagation(); active = k; paint(); startDrag(e, k, it[0]); });
+          m.appendChild(h);
+        });
+        m.addEventListener('pointerdown', function (e) { e.stopPropagation(); active = k; paint(); startDrag(e, k, 'move'); });
         stage.appendChild(m);
         marks[k] = m;
-        m.addEventListener('pointerdown', e => {
-          e.stopPropagation(); sel = k; paint();
-          const r = stage.getBoundingClientRect();
-          /* ★ 抓住哪儿就从哪儿拖: 先算"指针位置"和"这个框锚点(底边中点)"的差, 拖的时候加回去。
-             以前没有这一步 -> 第一次 pointermove 会把锚点瞬间拽到指针上:
-             按在框中间(这是最自然的抓法)就向上跳 68.7% 的画面高(实测 81px),
-             框直接从台上飞出去、用户找不回来(以为是什么新 bug)。 */
-          const pct = (cx, cy) => ({ x: (cx - r.left) / Math.max(1, r.width) * 100,
-                                     y: 100 - (cy - r.top) / Math.max(1, r.height) * 100 });
-          const p0 = pct(e.clientX, e.clientY);
-          const off = { x: (Number(pos[k].x) || 0) - p0.x, y: (Number(pos[k].y) || 0) - p0.y };
-          const move = ev => {
-            const c = pct(ev.clientX, ev.clientY);
-            pos[k].x = Math.max(0, Math.min(100, c.x + off.x));
-            pos[k].y = Math.max(0, Math.min(100, c.y + off.y));
-            paint();
-          };
-          const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-          window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-        });
       }
-      function paint() {
-        for (const k of slots) {
-          const m = marks[k];
-          m.style.left = pos[k].x + '%';
-          m.style.bottom = (100 - pos[k].y) + '%';
-          m.style.transform = 'translateX(-50%) scale(' + pos[k].scale + ')';
-          m.classList.toggle('tgm-sel', k === sel);
-        }
-        rng.value = String(pos[sel].scale); val.textContent = sel + ' · ' + Number(pos[sel].scale).toFixed(2) + '×';
-      }
-      const rowS = el('div', 'tgm-row');
-      rowS.appendChild(el('label', '', '大小'));
-      const rng = el('input', 'tgm-range'); rng.type = 'range'; rng.min = '0.4'; rng.max = '2'; rng.step = '0.01';
-      rowS.appendChild(rng);
-      const val = el('span', 'tgm-imeta', '');
-      rowS.appendChild(val);
-      body.appendChild(rowS);
+
       const rowP = el('div', 'tgm-row');
       rowP.appendChild(el('label', '', '预览用图'));
       const selP = el('select', 'tgm-sel');
       const oAuto = el('option', '', '（自动：第一张立绘）'); oAuto.value = ''; selP.appendChild(oAuto);
       pool.forEach(x => { const o = el('option', '', x.label); o.value = x.id; selP.appendChild(o); });
-      selP.value = p.slotPreview[sel] || '';
+      selP.value = p.slotPreview[active] || '';
       rowP.appendChild(selP);
       body.appendChild(rowP);
       if (!pool.length) body.appendChild(el('div', 'tgm-dlg-text', '还没有导入立绘，所以台上显示的是占位方块。先去「图片素材」建角色组、加立绘。'));
-      selP.addEventListener('change', async () => { p.slotPreview[sel] = selP.value || undefined; paint(); });
-      rng.addEventListener('input', () => { pos[sel].scale = Number(rng.value); paint(); });
+      selP.addEventListener('change', async () => { p.slotPreview[active] = selP.value || undefined; paint(); });
+
+      function paint() {
+        for (const k of slots) {
+          const b = boxes[k], m = marks[k];
+          m.style.left = b.x + '%'; m.style.top = b.y + '%';
+          m.style.width = b.w + '%'; m.style.height = b.h + '%';
+          m.classList.toggle('tgm-sel', k === active);
+        }
+        drawChips();
+        try { selP.value = p.slotPreview[active] || ''; } catch (x) {}
+      }
+      bSplit.addEventListener('click', function () {
+        const n = Math.max(1, slots.length), w = Math.floor(96 / n);
+        slots.forEach(function (k, i) { boxes[k] = { x: 2 + i * w, y: 18, w: w - 4, h: 76 }; });
+        paint();
+      });
+      paint();
 
       const foot = el('div', 'tgm-dlg-foot');
       const bCancel = el('div', 'tgm-btn', '取消');
@@ -1242,7 +1306,16 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
       box.append(body, foot); mask.appendChild(box); document.body.appendChild(mask);
       paint();
       const done = v => { mask.remove(); resolve(v); };
-      bOk.addEventListener('click', () => done({ pos: pos, preview: p.slotPreview }));
+      bOk.addEventListener('click', () => {
+        /* 保存时把两套数据对齐: slotPos 由框推出来 (x = 框中心, y = 框底), scale 保持原值不动 */
+        slots.forEach(function (k) {
+          const b = boxes[k];
+          pos[k] = { x: Math.round((b.x + b.w / 2) * 100) / 100,
+                     y: Math.round((b.y + b.h) * 100) / 100,
+                     scale: (pos[k] && Number(pos[k].scale)) || 1 };
+        });
+        done({ pos: pos, boxes: boxes, preview: p.slotPreview });
+      });
       bCancel.addEventListener('click', () => done(null));
       mask.addEventListener('click', e => { if (e.target === mask) done(null); });
     });
@@ -1538,6 +1611,7 @@ let _pvWinOpen = false;
       const r = await slotEditor(cur);
       if (!r) return;
       cur.slotPos = r.pos; cur.slotPreview = r.preview;
+      if (r.boxes) cur.slotBoxes = r.boxes;      // ★ 站位编辑现在画的就是占位框, 一起存
       await putProjectData(cur); syncSlots(); flash2('站位已保存 ✓');
     });
     function flash2(t) { prev.textContent = t; setTimeout(syncSlots, 1600); }

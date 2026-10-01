@@ -132,6 +132,26 @@
   object-position: 50% 50%; transform-origin: center center; user-select: none; -webkit-user-drag: none; }
 /* 站位编辑器 */
 .tgm-slotstage { background: #0b0d14; }
+/* ---- 站位编辑: 框 + 四条边/四个角把手 (把手画在框【里面】, 免得贴到台子边上被 overflow 裁掉点不到) ---- */
+.tgm-slotbox { position: absolute; box-sizing: border-box; border: 1px dashed rgba(255,255,255,.45); border-radius: 8px;
+  cursor: move; touch-action: none; background: rgba(255,255,255,.03); }
+.tgm-slotbox.tgm-sel { border: 1px solid #ff8fb1; box-shadow: 0 0 0 1px #ff8fb1 inset; background: rgba(255,143,177,.12); }
+.tgm-slotbox-ghost { border-style: solid; border-color: #ff8fb1; background: rgba(255,143,177,.10); pointer-events: none; }
+.tgm-slotbox-in { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; overflow: hidden; }
+.tgm-slotbox-in img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.tgm-sloth { position: absolute; z-index: 3; }
+.tgm-sloth-n { left: 10px; right: 10px; top: 0; height: 8px; cursor: ns-resize; }
+.tgm-sloth-s { left: 10px; right: 10px; bottom: 0; height: 8px; cursor: ns-resize; }
+.tgm-sloth-w { top: 10px; bottom: 10px; left: 0; width: 8px; cursor: ew-resize; }
+.tgm-sloth-e { top: 10px; bottom: 10px; right: 0; width: 8px; cursor: ew-resize; }
+.tgm-sloth-nw { left: 0; top: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+.tgm-sloth-ne { right: 0; top: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+.tgm-sloth-sw { left: 0; bottom: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+.tgm-sloth-se { right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+.tgm-sloth:hover { background: rgba(255,143,177,.35); }
+.tgm-chip { cursor: pointer; padding: 2px 12px; border-radius: 999px; font-size: 12px;
+  background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16); color: rgba(255,255,255,.85); }
+.tgm-chip.tgm-on { background: #ff8fb1; color: #10121a; font-weight: 700; }
 .tgm-slotmark { position: absolute; width: 34%; height: 62%; transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   cursor: grab; touch-action: none; border-radius: 8px; border: 1px dashed rgba(255,255,255,.35); }
