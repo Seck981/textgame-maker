@@ -63,7 +63,8 @@
   filter: saturate(1.04) contrast(1.02);
 }
 /* 多角色同框: 不是当前说话者的那张淡下去 */
-.gv-sprite.gv-idle { opacity: .55; filter: brightness(.8) saturate(.85); }
+/* ★ 不说话的那个角色: 只【压暗】, 不做半透明 —— 半透明看着像"人死了变成亡魂"(用户原话) */
+.gv-sprite.gv-idle { opacity: 1; filter: brightness(.52) saturate(.92); }
 /* ★ 演出动画必须在每一帧都带上 translateX(-50%) + scale(var(--gv-s)),
    否则动画会覆盖掉立绘的定位 transform —— 立绘就会"闪到天边去" */
 .gv-sprite.gv-shake { animation: gv-shake .45s ease; }
