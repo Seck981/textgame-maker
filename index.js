@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.24', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.25', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
                           /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
@@ -1188,9 +1188,18 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
         m.addEventListener('pointerdown', e => {
           e.stopPropagation(); sel = k; paint();
           const r = stage.getBoundingClientRect();
+          /* ★ 抓住哪儿就从哪儿拖: 先算"指针位置"和"这个框锚点(底边中点)"的差, 拖的时候加回去。
+             以前没有这一步 -> 第一次 pointermove 会把锚点瞬间拽到指针上:
+             按在框中间(这是最自然的抓法)就向上跳 68.7% 的画面高(实测 81px),
+             框直接从台上飞出去、用户找不回来(以为是什么新 bug)。 */
+          const pct = (cx, cy) => ({ x: (cx - r.left) / Math.max(1, r.width) * 100,
+                                     y: 100 - (cy - r.top) / Math.max(1, r.height) * 100 });
+          const p0 = pct(e.clientX, e.clientY);
+          const off = { x: (Number(pos[k].x) || 0) - p0.x, y: (Number(pos[k].y) || 0) - p0.y };
           const move = ev => {
-            pos[k].x = Math.max(0, Math.min(100, (ev.clientX - r.left) / Math.max(1, r.width) * 100));
-            pos[k].y = Math.max(0, Math.min(100, (100 - (ev.clientY - r.top) / Math.max(1, r.height) * 100)));
+            const c = pct(ev.clientX, ev.clientY);
+            pos[k].x = Math.max(0, Math.min(100, c.x + off.x));
+            pos[k].y = Math.max(0, Math.min(100, c.y + off.y));
             paint();
           };
           const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
