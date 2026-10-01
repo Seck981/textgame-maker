@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.26', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.27', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
                           /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
@@ -835,10 +835,10 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
           _st.textContent = '.tgm-frame .tgm-slotsim{display:flex;align-items:flex-end;justify-content:center;}'
             + '.tgm-frame .tgm-frame-img{position:static;inset:auto;margin:0;height:100%;width:auto;object-fit:contain;object-position:bottom center;}'
             + '.tgm-frame.tgm-hasbox .tgm-frame-img{height:100%;}'
-            /* ★ 背景取景的图 = 真机 .gv-bg 的等价写法: 元素就是整个画面(inset:0), 图用 cover 铺满。
-               这样"元素尺寸 = 画面尺寸", 平移的 translate(x%) 也按画面算 —— 和真机一字不差。
-               以前这里给图片算 px 尺寸(按高度铺满), 图片比画面窄时弹窗里只剩中间一条。 */
-            + '.tgm-frame .tgm-frame-img.tgm-bgimg{position:absolute;inset:0;margin:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;}';
+            /* ★ 背景取景: 元素 = 【整张图】(按真机的 sizeBg 规则算成 px: 宽高都按原图比例, 只多不少),
+               框只是它的一个窗口 —— 拖动 = 把整张图挪来挪去, 想看原图哪一块都行, 绝不会被裁死。
+               (以前用 object-fit:cover 把图裁在元素内部: 拖元素时图跟着走 -> 永远只能看到那一块。) */
+            + '.tgm-frame .tgm-frame-img.tgm-bgimg{position:absolute;left:50%;top:50%;right:auto;bottom:auto;object-fit:fill;}';
           document.head.appendChild(_st);
         }
       } catch (e) {}
@@ -924,15 +924,31 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
          以前这里背景也走下面那段"按高度铺满"(那是立绘 .gv-sprite img 的规则) ->
          图片比画面窄的时候(横版 16:9 最常见)弹窗里只剩中间一条, 真机却是铺满的,
          这就是"取景框和虚拟楼层摆的位置不一样"。 */
-      const _coverBg = (!isPoint && opts.fitMode === 'cover');
-      try { if (_coverBg) img.classList.add('tgm-bgimg'); } catch (e) {}   // ★ 背景取景: 走 .tgm-bgimg(CSS 在下面注入)
+      const _coverBg = (!isPoint && opts.fitMode === 'bg');
+      try { if (_coverBg) img.classList.add('tgm-bgimg'); } catch (e) {}   // ★ 背景取景走 .tgm-bgimg 那条(元素=整张图, 画面只是窗口)
       const layoutImg = () => {
         /* ★ 立绘定位模式: 尺寸/居中全部交给上面那段 CSS (和真机 .gv-sprite img 一模一样),
            JS 不再插一脚 —— 之前就是 JS 自己算 px + 自己居中, 才和真机对不上 */
         if (_realSprite) { limX = 300; limY = 300; return; }
         const nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
-        /* 背景: 尺寸交给 .tgm-bgimg 那条 CSS (元素=画面, 图 cover 铺满) —— 和真机 .gv-bg 同一套 */
-        if (_coverBg) { img.style.width = ''; img.style.height = ''; limX = 300; limY = 300; return; }
+        /* ★ 背景: 元素 = 整张图。规则和 galgame 模板里的 sizeBg() 一字不差:
+             ar > bar(图比画面"宽") -> 高 = 画面高, 宽 = 高 x 原图比例;
+             否则                       -> 宽 = 画面宽, 高 = 宽 / 原图比例。
+           两个方向都 >= 画面 -> 画面里永远有图(不会露底), 同时整张图都在元素里(能拖到任何地方)。 */
+        if (_coverBg) {
+          /* ★ 量【画面】(stage) 的尺寸, 不是 .tgm-slotsim —— 那是立绘的收缩盒子(会被内容撑成 158x153 这种),
+             拿它算出来的"整张图"只有一小块 (实测过: 元素 158x237, 画面里根本盖不住)。 */
+          const _bw = stage.clientWidth || 0, _bh = stage.clientHeight || 0;
+          if (!nw || !nh || !_bw || !_bh) return;
+          const _ar = nw / nh, _bar = _bw / _bh;
+          let _w, _h;
+          if (_ar > _bar) { _h = _bh; _w = Math.round(_bh * _ar); } else { _w = _bw; _h = Math.round(_bw / _ar); }
+          img.style.width = _w + 'px'; img.style.height = _h + 'px';
+          img.style.marginLeft = Math.round(-_w / 2) + 'px';
+          img.style.marginTop = Math.round(-_h / 2) + 'px';
+          limX = 300; limY = 300;      // 背景不夹平移范围: 原图任意一角都拖得进来
+          return;
+        }
         const bw2 = sim.clientWidth || 0, bh2 = sim.clientHeight || 0;   // 和渲染一样: 按站位框算
         if (!nw || !nh || !bw2 || !bh2) return;
         /* ★ 必须和真机 .gv-sprite img 同一套: 高度铺满站位框, 宽度 = 高 × 原图比例 (contain by height),
@@ -951,9 +967,7 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
           limY = Math.abs(kh - bh2) / 2 / Math.max(1, kh) * 100;
         } else { limX = 300; limY = 300; }
       };
-      /* ★ 背景取景: 图直接挂在【画面】上 (不是 .tgm-slotsim) —— 这样它和真机的 .gv-bg 一样是"整块画面",
-         inset:0 + object-fit:cover; 平移的 translate(x%) 也按画面算, 和真机一致。
-         立绘/气泡仍然挂 .tgm-slotsim (它们本来就在站位框里)。 */
+      /* ★ 背景取景: 图直接挂在【画面】上(它自己就是整张图那么大, 画面只是窗口); 立绘/气泡仍然挂 .tgm-slotsim。 */
       (_coverBg ? stage : sim).appendChild(img);
       img.addEventListener('load', layoutImg);
       /* 气泡模式: 这张 img 是【垫底的立绘】, 气泡本身是另一个元素 (宽度 30%, 和 .gv-sticker 一致) */
@@ -1121,12 +1135,17 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
       stage.addEventListener('pointermove', e => {
         if (!drag) return;
         const r = stage.getBoundingClientRect();
+        /* ★ 背景那一路: translate(x%,y%) 的百分比是相对【图片元素】自己的尺寸算的,
+           而背景的元素现在 = 整张图(比画面大) —— 所以换算必须按元素尺寸, 不能按画面。
+           以前按画面算 -> 竖向越拖越快 (实测拖 50px, 图跑了 133px, 因为元素高是画面的 2.6 倍)。 */
+        const kx = (_coverBg && img.clientWidth) ? img.clientWidth : Math.max(1, r.width);
+        const ky = (_coverBg && img.clientHeight) ? img.clientHeight : Math.max(1, r.height);
         if (isPoint) {                               // 气泡中心点直接跟着鼠标走, 限制在框里
           fit.x = Math.max(0, Math.min(100, drag.ox + (e.clientX - drag.sx) / Math.max(1, r.width) * 100));
           fit.y = Math.max(0, Math.min(100, drag.oy + (e.clientY - drag.sy) / Math.max(1, r.height) * 100));
         } else {
-          fit.x = Math.max(-limX, Math.min(limX, drag.ox + (e.clientX - drag.sx) / Math.max(1, r.width) * 100));
-          fit.y = Math.max(-limY, Math.min(limY, drag.oy + (e.clientY - drag.sy) / Math.max(1, r.height) * 100));
+          fit.x = Math.max(-limX, Math.min(limX, drag.ox + (e.clientX - drag.sx) / kx * 100));
+          fit.y = Math.max(-limY, Math.min(limY, drag.oy + (e.clientY - drag.sy) / ky * 100));
         }
         paint();
       });
@@ -3688,7 +3707,7 @@ let _pvWinOpen = false;
       const o1 = el('div', 'tgm-btn', '取景'); const o2 = el('div', 'tgm-btn', '改名'); const o3 = el('div', 'tgm-btn tgm-danger', '删除');
       ops.append(o1, o2, o3); t.appendChild(ops);
       o1.addEventListener('click', async () => {
-        const fit = await frameEditor({ title: '背景取景：' + b.name, src: u, fit: b.fit, fitMode: 'cover', aspect: ((cur.frameSize && cur.frameSize.h) ? (cur.frameSize.w / cur.frameSize.h) : 9 / 19.5), maxW: cur.frameSize && cur.frameSize.w });
+        const fit = await frameEditor({ title: '背景取景：' + b.name, src: u, fit: b.fit, fitMode: 'bg', aspect: ((cur.frameSize && cur.frameSize.h) ? (cur.frameSize.w / cur.frameSize.h) : 9 / 19.5), maxW: cur.frameSize && cur.frameSize.w });
         if (fit) { b.fit = fit; await putProjectData(cur); renderAssets(); }
       });
       o2.addEventListener('click', async () => { const n = await askText('重命名背景', '', b.name); if (n == null) return; b.name = String(n).trim() || b.name; await putProjectData(cur); renderAssets(); });
