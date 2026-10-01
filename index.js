@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   'use strict';
-  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.27', dir: '/scripts/extensions/third-party/TextGameMaker' };
+  const PLUGIN = { name: '文字游戏页面制作器', version: '1.0.28', dir: '/scripts/extensions/third-party/TextGameMaker' };
   const LS_LAST = 'tgm_last_project';
 
                           /* ==GV-RICH-BEGIN== 悬浮窗富渲染 —— 由引擎 galgame.js 的 ==GV-RICH-START== 段自动同步 (templates/sync-rich.mjs)。预览和真机共用同一套切分/围栏代码, 手改这里下次同步会被覆盖 */
@@ -892,10 +892,32 @@ async function kvDel(k) { const d = await db(); return new Promise((res, rej) =>
         const b = boxOf(_boxSlot);
         return b ? { x: Number(b.x) + Number(b.w) / 2, y: Number(b.y) + Number(b.h), w: Number(b.w) + '%', scale: 1, h: Number(b.h) } : null;
       };
+      /* ★ 某个站位在真机里到底站哪: 和调用处(立绘「定位」按钮里那段)一字不差 ——
+         有框就按框(中心 x / 底 y / 框宽高), 没框就用 slotPos, 再没有才是默认间距; 单人一律居中。
+         切站位时必须用它重算, 不然 left/right 看着是同一套位置。 */
+      const baseForSlot = function (k) {
+        const _slots = (cur.slots || []).filter(Boolean);
+        const single = _slots.length <= 1;
+        const box = single ? null : boxOf(k);
+        const hasBox = !!(box && Number(box.w) > 0 && Number(box.h) > 0);
+        const pos = (cur.slotPos || {})[k] || null;
+        const i = _slots.indexOf(k), n = Math.max(1, _slots.length);
+        const bx = hasBox ? (Number(box.x) + Number(box.w) / 2)
+                          : (single ? 50 : (pos && typeof pos.x === 'number' ? pos.x : (n <= 1 || i < 0 ? 50 : Math.round(20 + i / (n - 1) * 60))));
+        const by = hasBox ? (Number(box.y) + Number(box.h)) : (pos && typeof pos.y === 'number' ? pos.y : 100);
+        const bs = pos && pos.scale ? pos.scale : 1;
+        return { x: bx, y: by, scale: bs,
+                 w: hasBox ? (Number(box.w) + '%') : (_slots.length ? '74%' : '100%'),
+                 h: hasBox ? Number(box.h) : null };
+      };
       function applyBase() {
-        /* ★ 单一来源: 调用处已经按真机规则算好了(含占位框), 优先用它;
-           只有它没给(旧调用)才在弹窗里按站位框补一份 —— 以前反过来, 于是弹窗和真机各算一套、位置对不上 */
-        const b = _baseFixed || (_boxSlot ? boxBase() : null);
+        /* ★ 立绘「定位」那个弹窗要【各站各的】: 芯片切到哪个站位, 就按那个站位重算一遍(框/落点/缩放)。
+           以前只用开头算好的 _baseFixed(const) -> 切站位只换了虚线框, 托着立绘的 sim 一直不动,
+           看起来就是"left 和 right 存的是同一套位置"(用户报的正是这个)。
+           气泡那一路仍然用 _baseFixed(它跟着"当前预览的立绘"走, 不一样)。 */
+        const b = (!isPoint && opts.slotPick && _slotList.length)
+          ? (baseForSlot(_boxSlot) || _baseFixed || (_boxSlot ? boxBase() : null))
+          : (_baseFixed || (_boxSlot ? boxBase() : null));
         if (b) {
           sim.style.left = (Number(b.x) || 0) + '%';
           sim.style.bottom = (100 - (b.y == null ? 100 : Number(b.y))) + '%';
